@@ -37,34 +37,38 @@ body {
 
 /* ===== FOCUS PARA TV ===== */
 :focus { outline:none; }
-*:focus-visible {
+*:focus {
   outline:3px solid var(--accent) !important;
   outline-offset:2px;
   border-radius:6px;
 }
 
-/* ===== ANIMACIONES RÁPIDAS ===== */
+/* ===== ANIMACIONES MEJORADAS (más rápidas y notorias) ===== */
 .chan-card, .series-row, .ep-row, .cat-item, .top-tab, .profile-card {
-  transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease !important;
+  transition: transform 0.06s ease, border-color 0.1s ease, box-shadow 0.1s ease !important;
+  will-change: transform;
 }
-.chan-card:hover, .chan-card:focus-visible {
-  transform: scale(1.05) translateY(-2px) !important;
+.chan-card:hover, .chan-card:focus {
+  transform: scale(1.08) translateY(-4px) !important;
   border-color: var(--accent) !important;
-  box-shadow: 0 8px 24px rgba(245,166,35,0.25) !important;
+  box-shadow: 0 12px 32px rgba(245,166,35,0.35) !important;
 }
-.series-row:hover, .series-row:focus-visible {
-  transform: scale(1.02) !important;
-  border-color: var(--accent) !important;
-}
-.chan-card.poster:hover, .chan-card.poster:focus-visible {
-  transform: scale(1.06) !important;
-  box-shadow: 0 12px 32px rgba(245,166,35,0.3) !important;
-}
-.cat-item:hover, .cat-item:focus-visible {
-  transform: translateX(4px) !important;
-}
-.top-tab:hover, .top-tab:focus-visible {
+.series-row:hover, .series-row:focus {
   transform: scale(1.04) !important;
+  border-color: var(--accent) !important;
+}
+.chan-card.poster:hover, .chan-card.poster:focus {
+  transform: scale(1.08) !important;
+  box-shadow: 0 16px 40px rgba(245,166,35,0.4) !important;
+}
+.cat-item:hover, .cat-item:focus {
+  transform: translateX(6px) !important;
+}
+.top-tab:hover, .top-tab:focus {
+  transform: scale(1.06) !important;
+}
+.icon-btn:hover, .icon-btn:focus {
+  transform: scale(1.12) !important;
 }
 
 /* ===== SETUP ===== */
@@ -311,7 +315,7 @@ body {
   padding:6px 14px;
   border-radius:18px;
   cursor:pointer;
-  transition:background 0.15s, color 0.15s, transform 0.08s;
+  transition:background 0.15s, color 0.15s, transform 0.06s;
 }
 .top-tab.active { background:var(--accent-bg); color:var(--accent); }
 .top-tab:hover:not(.active) { color:var(--text-primary); }
@@ -338,10 +342,10 @@ body {
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:border-color 0.15s, color 0.15s, transform 0.08s;
+  transition:border-color 0.15s, color 0.15s, transform 0.06s;
 }
 .icon-btn:hover { border-color:var(--text-muted); color:var(--text-primary); }
-.icon-btn:focus-visible { transform:scale(1.1); }
+.icon-btn:focus { transform:scale(1.12); }
 
 .mobile-type-tabs {
   display:none;
@@ -379,7 +383,7 @@ body {
   font-size:13px;
   color:var(--text-secondary);
   border-left:2px solid transparent;
-  transition:color 0.12s, background 0.12s, transform 0.08s;
+  transition:color 0.12s, background 0.12s, transform 0.06s;
 }
 .cat-item:hover { color:var(--text-primary); background:rgba(255,255,255,0.02); }
 .cat-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--accent-bg); }
@@ -416,13 +420,13 @@ body {
   border-radius:var(--radius);
   padding:12px;
   cursor:pointer;
-  transition:transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  transition:transform 0.06s ease, border-color 0.1s ease, box-shadow 0.1s ease;
   will-change: transform;
 }
-.chan-card:focus-visible {
-  transform: scale(1.05) translateY(-3px);
+.chan-card:focus {
+  transform: scale(1.08) translateY(-4px);
   border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(245,166,35,0.25);
+  box-shadow: 0 12px 32px rgba(245,166,35,0.35);
   outline: none;
 }
 .chan-card.playing { border-color:var(--accent); background:var(--accent-bg); }
@@ -460,11 +464,11 @@ body {
   border-radius:var(--radius);
   overflow:hidden;
   position:relative;
-  transition:transform 0.08s ease, box-shadow 0.12s ease;
+  transition:transform 0.06s ease, box-shadow 0.1s ease;
 }
-.chan-card.poster:focus-visible {
-  transform: scale(1.06);
-  box-shadow: 0 12px 32px rgba(245,166,35,0.3);
+.chan-card.poster:focus {
+  transform: scale(1.08);
+  box-shadow: 0 16px 40px rgba(245,166,35,0.4);
   outline: none;
 }
 .chan-card.poster .chan-logo-wrap {
@@ -513,10 +517,10 @@ body {
   border-radius:var(--radius);
   padding:10px 14px;
   cursor:pointer;
-  transition:border-color 0.12s, transform 0.08s;
+  transition:border-color 0.1s, transform 0.06s;
 }
-.series-row:focus-visible {
-  transform: scale(1.02);
+.series-row:focus {
+  transform: scale(1.04);
   border-color: var(--accent);
   outline: none;
 }
@@ -540,10 +544,10 @@ body {
   border-radius:8px;
   cursor:pointer;
   font-size:13px;
-  transition:border-color 0.12s, transform 0.08s;
+  transition:border-color 0.1s, transform 0.06s;
 }
-.ep-row:focus-visible {
-  transform: scale(1.02);
+.ep-row:focus {
+  transform: scale(1.04);
   border-color: var(--accent);
   outline: none;
 }
@@ -618,7 +622,7 @@ body {
   transition:background 0.12s;
 }
 .close-x:hover { background:var(--bg-card); color:var(--text-primary); }
-.close-x:focus-visible { outline:3px solid var(--accent); }
+.close-x:focus { outline:3px solid var(--accent); }
 
 #player-overlay {
   display:none;
