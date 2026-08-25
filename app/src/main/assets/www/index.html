@@ -1336,7 +1336,10 @@ function playStream(url, title){
   if(isM3U8 && window.Hls && Hls.isSupported()){
     status.textContent = 'Conectando…';
     
-    // ----- CONFIGURACIÓN MEJORADA DE HLS CON RECUPERACIÓN AUTOMÁTICA -----
+    // ----- CONFIGURACIÓN MEJORADA DE HLS CON RECUPERACIÓN AUTOMÁTICA DE MANIFIESTO -----
+    let reloadAttempts = 0;
+    const MAX_RELOAD_ATTEMPTS = 3;
+    
     const hls = new Hls({
       maxBufferLength: 60,
       liveDurationInfinity: true,
@@ -1346,61 +1349,74 @@ function playStream(url, title){
       lowLatencyMode: false,
       autoLevelCapping: -1,
       maxBufferSize: 60 * 1024 * 1024,
-      // NUEVAS OPCIONES PARA RECUPERAR ERRORES
-      recoverAttempts: 5,                 // Intentos de recuperación
-      manifestLoadTimeout: 30000,        // 30 segundos para cargar manifiesto
-      levelLoadingTimeout: 30000,        // 30 segundos para cargar niveles
-      startLevel: -1                     // Mejor nivel automático
+      recoverAttempts: 5,
+      manifestLoadTimeout: 30000,
+      levelLoadingTimeout: 30000,
+      startLevel: -1
     });
-    // ----------------------------------------------------------
     
     state.hls = hls;
     hls.loadSource(url);
     hls.attachMedia(video);
     
-    // Evento cuando el manifiesto se ha parseado correctamente
     hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
       status.textContent = 'Reproduciendo en vivo';
       video.play().catch(()=>{});
     });
     
-    // Manejo de errores mejorado
+    // Manejo de errores mejorado con reintentos de carga de manifiesto
     hls.on(Hls.Events.ERROR, (evt, data) => {
+      // Caso especial: "Source error" suele ser MANIFEST_LOAD_ERROR o LEVEL_LOAD_ERROR
       if (data.fatal) {
-        // Si el error es fatal, intentamos recuperar automáticamente
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        // Si es un error de red o de carga, intentar recargar el manifiesto
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR ||
+            data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+            data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR) {
+          if (reloadAttempts < MAX_RELOAD_ATTEMPTS) {
+            reloadAttempts++;
+            status.textContent = `Reintentando (${reloadAttempts}/${MAX_RELOAD_ATTEMPTS})...`;
+            // Recargar el manifiesto después de 3 segundos
+            setTimeout(() => {
+              if (state.hls) {
+                state.hls.loadSource(url);
+                state.hls.attachMedia(video);
+              }
+            }, 3000);
+            return; // No mostrar error, estamos reintentando
+          } else {
+            // Después de 3 intentos, mostrar error
+            status.classList.add('err');
+            status.textContent = 'Error: No se pudo cargar el stream (fuente inaccesible).';
+            extBtn.classList.add('show');
+            return;
+          }
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
           status.textContent = 'Recuperando error de medios...';
           hls.recoverMediaError();
-        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          status.textContent = 'Recuperando error de red...';
-          hls.recoverMediaError(); // También funciona para red en algunos casos
-        } else {
-          // Si no podemos recuperar, mostramos error
-          status.classList.add('err');
-          status.textContent = 'Error de reproducción';
-          extBtn.classList.add('show');
+          return;
         }
+        // Otros errores fatales
+        status.classList.add('err');
+        status.textContent = 'Error de reproducción';
+        extBtn.classList.add('show');
       } else {
-        // Errores no fatales se ignoran para que HLS intente recuperar
+        // Errores no fatales, ignorar (HLS intentará recuperarse)
         // console.log('Error no fatal:', data);
       }
     });
     
     // Si el video falla, intentar recargar una vez
     video.addEventListener('error', function onVideoError() {
-      // Evitar múltiples ejecuciones
       if (this._reloading) return;
       this._reloading = true;
       status.textContent = 'Reintentando...';
       setTimeout(() => {
-        // Si el stream no se ha recuperado, recargar el HLS
         if (state.hls) {
           state.hls.loadSource(url);
           state.hls.attachMedia(video);
         }
         this._reloading = false;
       }, 3000);
-      // Eliminamos el listener para evitar bucles
       this.removeEventListener('error', onVideoError);
     }, {once: true});
     
