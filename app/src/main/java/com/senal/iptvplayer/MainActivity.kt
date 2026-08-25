@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
@@ -92,7 +93,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.exitPlayerBtn).setOnClickListener { closeNativePlayer() }
         aspectBtn.setOnClickListener { showAspectMenu(it) }
 
-        // Mejor control de visibilidad
+        // Configuración para TV: los botones del mando controlan el reproductor
         playerView.controllerShowTimeoutMs = 5000
         playerView.setControllerVisibilityListener(
             PlayerView.ControllerVisibilityListener { visibility ->
@@ -102,7 +103,12 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        // Configuración mejorada del WebView
+        // Evitar que el teclado virtual se abra en TV
+        playerView.isFocusable = true
+        playerView.isFocusableInTouchMode = true
+        playerView.requestFocus()
+
+        // Configuración del WebView
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
@@ -190,8 +196,7 @@ class MainActivity : AppCompatActivity() {
         aspectBtn.visibility = View.VISIBLE
         playerOverlay.visibility = View.VISIBLE
         loadingSpinner.visibility = View.VISIBLE
-        
-        // Resetear la relación de aspecto al abrir
+
         applyAspectMode("fit")
 
         val exoPlayer = nativePlayer ?: ExoPlayer.Builder(this).build().also {
@@ -217,6 +222,8 @@ class MainActivity : AppCompatActivity() {
         exoPlayer.setMediaItem(MediaItem.fromUri(url))
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
+
+        // Enfocar el PlayerView para que los botones del mando funcionen
         playerView.requestFocus()
     }
 
@@ -224,6 +231,8 @@ class MainActivity : AppCompatActivity() {
         nativePlayer?.pause()
         nativePlayer?.stop()
         playerOverlay.visibility = View.GONE
+        // Devolver el foco al WebView
+        webView.requestFocus()
     }
 
     private fun showAspectMenu(anchor: View) {
@@ -278,6 +287,32 @@ class MainActivity : AppCompatActivity() {
         params.height = height
         params.gravity = android.view.Gravity.CENTER
         playerView.layoutParams = params
+    }
+
+    // Capturar teclas del mando para controlar reproducción
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        // Si el reproductor está visible, pasar las teclas al PlayerView
+        if (playerOverlay.visibility == View.VISIBLE) {
+            // Tecla de reproducción/pausa (OK/Enter en muchos mandos)
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                nativePlayer?.let {
+                    if (it.isPlaying) it.pause() else it.play()
+                }
+                return true
+            }
+            // Tecla de adelanto rápido (derecha)
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                nativePlayer?.seekTo(nativePlayer!!.currentPosition + 10000)
+                return true
+            }
+            // Tecla de retroceso (izquierda)
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                nativePlayer?.seekTo(nativePlayer!!.currentPosition - 10000)
+                return true
+            }
+            // Tecla de volumen arriba/abajo la dejamos pasar
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun onStop() {
