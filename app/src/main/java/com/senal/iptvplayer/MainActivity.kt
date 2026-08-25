@@ -13,11 +13,13 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -247,6 +249,7 @@ class MainActivity : AppCompatActivity() {
     // connection, uses real HTTP timeouts so a dead server fails fast instead
     // of hanging, and follows cross-protocol (http->https) redirects that a
     // lot of IPTV panels do.
+    @OptIn(UnstableApi::class)
     private fun buildTunedPlayer(): ExoPlayer {
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("SenalIPTV/1.0 (Linux; Android) ExoPlayerLib/1.4.1")
