@@ -17,7 +17,7 @@
         android:background="#000000"
         android:visibility="gone" />
 
-    <!-- Native ExoPlayer overlay -->
+    <!-- Native ExoPlayer overlay optimizado para TV -->
     <FrameLayout
         android:id="@+id/native_player_overlay"
         android:layout_width="match_parent"
@@ -30,6 +30,10 @@
             android:id="@+id/playerView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:importantForAutofill="no"
+            android:inputType="none"
             app:show_buffering="when_playing"
             app:resize_mode="fit"
             app:use_controller="true"
@@ -78,7 +82,9 @@
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:elevation="6dp"
-                android:text="✕ Cerrar" />
+                android:text="✕ Cerrar"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
         </LinearLayout>
 
         <Button
@@ -97,7 +103,9 @@
             android:textSize="20sp"
             android:elevation="6dp"
             android:text="⚙"
-            android:fontFamily="sans-serif"/>
+            android:fontFamily="sans-serif"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
 
         <ProgressBar
             android:id="@+id/loadingSpinner"
