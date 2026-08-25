@@ -886,10 +886,12 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 "use strict";
 
 // ===== LISTA DE SERVIDORES PERMITIDOS (ocultos) =====
+// SE HA AÑADIDO http://neospaxy.top:8080
 const SERVIDORES = [
   'http://zonacero.lat:8080',
   'http://liontv.es:8080',
-  'http://tv.proyectox.vip:8080'
+  'http://tv.proyectox.vip:8080',
+  'http://neospaxy.top:8080'  // <--- NUEVO SERVIDOR
 ];
 
 // ===== STATE =====
@@ -1015,25 +1017,21 @@ async function xtreamApi(base, user, pass, action, extra){
   return res.json(); 
 }
 
-// ===== NUEVA FUNCIÓN useProfile (solo para xtream) =====
+// ===== useProfile (solo para xtream) =====
 async function useProfile(id){
   const p = loadProfiles().find(x => x.id === id);
   if(!p) return;
-  // Solo soportamos modo xtream en esta versión
   if(p.mode === 'xtream' && p.xtream) {
-    // Usar el servidor guardado, no el primero por defecto
     await connectXtream({ server: p.xtream.server, user: p.xtream.user, pass: p.xtream.pass, name: p.name });
   } else {
-    // Si es m3u u otro, no hacemos nada o mostramos error
     alert('Esta versión solo soporta cuentas Xtream.');
   }
 }
 
+// ===== connectXtream MEJORADO (compatible con todos los servidores) =====
 async function connectXtream(opts){
   opts = opts || {};
-  // Si se proporciona un servidor específico, usarlo, sino el primero de la lista
   let base = opts.server || SERVIDORES[0];
-  // Validar que el servidor esté en la lista permitida
   if(!SERVIDORES.includes(base)){
     $('#x-error').textContent = 'Servidor no autorizado.';
     $('#x-error').style.display = 'block';
@@ -1048,63 +1046,102 @@ async function connectXtream(opts){
   if(!user || !pass){ errBox.textContent = 'Ingresa usuario y contraseña.'; errBox.style.display = 'block'; return false; }
   loading.style.display = 'flex';
   
-  // Si se proporciona un servidor específico (ej. desde perfil guardado), probar solo ese
   let serversToTry = opts.server ? [opts.server] : SERVIDORES;
   
-  let lastError = null;
   for (let baseTry of serversToTry) {
     try {
       const auth = await xtreamApi(baseTry, user, pass);
-      if(auth && auth.user_info && auth.user_info.auth === 1) {
-        // Servidor válido, continuar con la carga
-        const liveCats = await xtreamApi(baseTry, user, pass, 'get_live_categories').catch(()=>[]);
-        const liveStreams = await xtreamApi(baseTry, user, pass, 'get_live_streams').catch(()=>[]);
-        const vodCats = await xtreamApi(baseTry, user, pass, 'get_vod_categories').catch(()=>[]);
-        const vodStreams = await xtreamApi(baseTry, user, pass, 'get_vod_streams').catch(()=>[]);
-        const seriesCats = await xtreamApi(baseTry, user, pass, 'get_series_categories').catch(()=>[]);
-        const seriesList = await xtreamApi(baseTry, user, pass, 'get_series').catch(()=>[]);
+      
+      // ---------- NUEVA LÓGICA DE AUTENTICACIÓN FLEXIBLE ----------
+      let isValid = false;
+      let userInfo = null;
+      
+      // Caso 1: estructura clásica con user_info.auth
+      if (auth && auth.user_info && auth.user_info.auth === 1) {
+        isValid = true;
+        userInfo = auth.user_info;
+      }
+      // Caso 2: auth en la raíz (algunos servidores lo ponen así)
+      else if (auth && auth.auth === 1) {
+        isValid = true;
+        userInfo = auth.user_info || auth;
+      }
+      // Caso 3: si existe user_info y tiene username (asumimos autenticado)
+      else if (auth && auth.user_info && auth.user_info.username) {
+        isValid = true;
+        userInfo = auth.user_info;
+      }
+      // Caso 4: si la respuesta tiene 'user_info' y no hay error (puede que no tenga auth)
+      else if (auth && auth.user_info) {
+        isValid = true;
+        userInfo = auth.user_info;
+      }
+      // Caso 5: si la respuesta es un objeto con datos de usuario (algunos servers devuelven directamente)
+      else if (auth && typeof auth === 'object' && auth.username) {
+        isValid = true;
+        userInfo = auth;
+      }
+      
+      if (!isValid) {
+        // Si no se reconoce, lanzamos error para probar el siguiente servidor
+        throw new Error('Credenciales inválidas o respuesta inesperada');
+      }
+      // -------------------------------------------------------------
+      
+      // Si llegamos aquí, la autenticación fue exitosa
+      const liveCats = await xtreamApi(baseTry, user, pass, 'get_live_categories').catch(()=>[]);
+      const liveStreams = await xtreamApi(baseTry, user, pass, 'get_live_streams').catch(()=>[]);
+      const vodCats = await xtreamApi(baseTry, user, pass, 'get_vod_categories').catch(()=>[]);
+      const vodStreams = await xtreamApi(baseTry, user, pass, 'get_vod_streams').catch(()=>[]);
+      const seriesCats = await xtreamApi(baseTry, user, pass, 'get_series_categories').catch(()=>[]);
+      const seriesList = await xtreamApi(baseTry, user, pass, 'get_series').catch(()=>[]);
 
-        const catNameById = {}; liveCats.forEach(c=> catNameById[c.category_id] = c.category_name);
-        const channels = liveStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: catNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${baseTry}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.m3u8` }));
+      const catNameById = {}; liveCats.forEach(c=> catNameById[c.category_id] = c.category_name);
+      const channels = liveStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: catNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${baseTry}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.m3u8` }));
 
-        const vodCatNameById = {}; vodCats.forEach(c=> vodCatNameById[c.category_id] = c.category_name);
-        const vod = vodStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: vodCatNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${baseTry}/movie/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.${s.container_extension || 'mp4'}` }));
+      const vodCatNameById = {}; vodCats.forEach(c=> vodCatNameById[c.category_id] = c.category_name);
+      const vod = vodStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: vodCatNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${baseTry}/movie/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.${s.container_extension || 'mp4'}` }));
 
-        const seriesCatNameById = {}; seriesCats.forEach(c=> seriesCatNameById[c.category_id] = c.category_name);
-        const series = seriesList.map(s=>({ name: s.name, logo: s.cover || '', group: seriesCatNameById[s.category_id] || 'General', catId: s.category_id, seriesId: s.series_id }));
+      const seriesCatNameById = {}; seriesCats.forEach(c=> seriesCatNameById[c.category_id] = c.category_name);
+      const series = seriesList.map(s=>({ name: s.name, logo: s.cover || '', group: seriesCatNameById[s.category_id] || 'General', catId: s.category_id, seriesId: s.series_id }));
 
-        state.mode = 'xtream';
-        state.xtream = { base: baseTry, user, pass };
-        
-        // ----- OBTENER FECHA DE VENCIMIENTO (más robusto) -----
-        const userInfo = auth.user_info;
-        let expDateRaw = null;
+      state.mode = 'xtream';
+      state.xtream = { base: baseTry, user, pass };
+      
+      // ----- FECHA DE VENCIMIENTO (buscar en varios sitios) -----
+      let expDateRaw = null;
+      if (userInfo) {
         if (userInfo.exp_date) expDateRaw = userInfo.exp_date;
         else if (userInfo.expiration_date) expDateRaw = userInfo.expiration_date;
         else if (userInfo.expire_date) expDateRaw = userInfo.expire_date;
         else if (userInfo.expiry_date) expDateRaw = userInfo.expiry_date;
-        
-        let formattedDate = 'Ilimitado';
-        if (expDateRaw && parseInt(expDateRaw) > 0) {
-          const d = new Date(parseInt(expDateRaw) * 1000);
-          formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-        }
-        state.connName = user + ' | ' + formattedDate;
-        // ---------------------------------------------------------
-
-        state.channels = channels;
-        state.categories = buildCategoriesFromChannels(channels);
-        state.vod = vod;
-        state.vodCategories = buildCategoriesFromChannels(vod);
-        state.series = series;
-        state.seriesCategories = buildCategoriesFromChannels(series);
-        loading.style.display = 'none';
-        upsertProfile({ mode: 'xtream', xtream: { server: baseTry, user, pass } }, customName);
-        launchApp();
-        return true;
       }
+      // Si no está en userInfo, buscar en auth directamente
+      if (!expDateRaw && auth) {
+        if (auth.exp_date) expDateRaw = auth.exp_date;
+        else if (auth.expiration_date) expDateRaw = auth.expiration_date;
+        else if (auth.expire_date) expDateRaw = auth.expire_date;
+        else if (auth.expiry_date) expDateRaw = auth.expiry_date;
+      }
+      let formattedDate = 'Ilimitado';
+      if (expDateRaw && parseInt(expDateRaw) > 0) {
+        const d = new Date(parseInt(expDateRaw) * 1000);
+        formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      state.connName = user + ' | ' + formattedDate;
+      // ---------------------------------------------------------
+
+      state.channels = channels;
+      state.categories = buildCategoriesFromChannels(channels);
+      state.vod = vod;
+      state.vodCategories = buildCategoriesFromChannels(vod);
+      state.series = series;
+      state.seriesCategories = buildCategoriesFromChannels(series);
+      loading.style.display = 'none';
+      upsertProfile({ mode: 'xtream', xtream: { server: baseTry, user, pass } }, customName);
+      launchApp();
+      return true;
     } catch(e) {
-      lastError = e;
       // Continuar con el siguiente servidor
     }
   }
@@ -1283,7 +1320,6 @@ async function tryAutoReconnect(){
   if(!saved) return;
   const autoBox = $('#auto-reconnect');
   autoBox.style.display = 'flex';
-  // Verificar que el servidor guardado esté en la lista permitida
   if(!SERVIDORES.includes(saved.xtream.server)){
     autoBox.style.display = 'none';
     return;
