@@ -53,7 +53,7 @@ body {
 }
 .setup-card {
   width:100%;
-  max-width:420px;
+  max-width:400px;
   background:var(--bg-secondary);
   border:1px solid var(--border-color);
   border-radius:var(--radius);
@@ -88,17 +88,6 @@ body {
   margin-top:6px;
   line-height:1.5;
 }
-.setup-head .server-info {
-  margin-top:10px;
-  font-size:12px;
-  color:var(--text-muted);
-  background:var(--bg-primary);
-  padding:8px 12px;
-  border-radius:6px;
-  border:1px solid var(--border-color);
-  font-family:monospace;
-  text-align:center;
-}
 .field { margin-bottom:16px; }
 .field label {
   display:block;
@@ -109,7 +98,7 @@ body {
   color:var(--text-secondary);
   margin-bottom:6px;
 }
-.field input, .field select {
+.field input {
   width:100%;
   background:var(--bg-primary);
   border:1px solid var(--border-color);
@@ -119,8 +108,7 @@ body {
   font-size:14px;
   transition:border-color 0.2s;
 }
-.field input:focus, .field select:focus { border-color:var(--accent-dim); }
-.field select option { background:var(--bg-primary); color:var(--text-primary); }
+.field input:focus { border-color:var(--accent-dim); }
 .btn {
   width:100%;
   background:var(--accent);
@@ -705,22 +693,13 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
         <div class="brand-mark"></div>
         <h1>Código Master TV</h1>
       </div>
-      <p>Reproductor IPTV para servidores seleccionados</p>
-      <div class="server-info" id="selected-server-display">🌐 zonacero.lat:8080</div>
+      <p>Reproductor IPTV</p>
       <div class="loading-line" id="auto-reconnect" style="display:none;">
         <div class="spinner"></div> Reconectando…
       </div>
     </div>
     <div class="saved-profiles" id="saved-profiles"></div>
     <div style="padding: 0 30px 24px;">
-      <div class="field">
-        <label>Servidor</label>
-        <select id="server-select">
-          <option value="http://zonacero.lat:8080">zonacero.lat:8080</option>
-          <option value="http://liontv.es:8080">liontv.es:8080</option>
-          <option value="http://tv.proyectox.vip:8080">tv.proyectox.vip:8080</option>
-        </select>
-      </div>
       <div class="field">
         <label>Usuario</label>
         <input type="text" id="x-user" placeholder="Tu usuario" value="">
@@ -786,7 +765,7 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 (function(){
 "use strict";
 
-// ===== LISTA DE SERVIDORES PERMITIDOS =====
+// ===== LISTA DE SERVIDORES PERMITIDOS (ocultos) =====
 const SERVIDORES = [
   'http://zonacero.lat:8080',
   'http://liontv.es:8080',
@@ -892,10 +871,6 @@ $('#my-lists-add-btn').addEventListener('click', ()=>{ closeMyListsModal(); $('#
 $('#hamburger-btn').addEventListener('click', ()=>{ $('#sidebar').classList.toggle('open'); $('#sidebar-scrim').classList.toggle('show'); });
 $('#sidebar-scrim').addEventListener('click', ()=>{ $('#sidebar').classList.remove('open'); $('#sidebar-scrim').classList.remove('show'); });
 
-$('#server-select').addEventListener('change', function(){
-  $('#selected-server-display').textContent = '🌐 ' + this.value.replace(/^https?:\/\//,'');
-});
-
 $('#x-load-btn').addEventListener('click', ()=> connectXtream());
 $('#disconnect-btn').addEventListener('click', disconnectApp);
 $('#player-close').addEventListener('click', closePlayer);
@@ -919,62 +894,84 @@ async function xtreamApi(base, user, pass, action, extra){
   return res.json(); 
 }
 
+// Función que prueba servidores hasta encontrar uno que funcione
 async function connectXtream(opts){
   opts = opts || {};
-  // Si se pasa server en opts, lo usamos, si no, tomamos del select
-  let base = opts.server || $('#server-select').value;
-  // Validar que el servidor esté en la lista permitida
-  if(!SERVIDORES.includes(base)){
-    $('#x-error').textContent = 'Servidor no autorizado.';
-    $('#x-error').style.display = 'block';
-    return false;
+  // Si se pasa un servidor específico (desde una cuenta guardada), lo usamos directamente.
+  // Si no, iteramos sobre la lista.
+  let user, pass, customName, serversToTry;
+  if (opts.server) {
+    // Servidor específico desde perfil guardado o reconexión
+    user = opts.user;
+    pass = opts.pass;
+    customName = opts.name;
+    serversToTry = [opts.server];
+  } else {
+    // Login normal: tomamos usuario/contraseña y probamos todos los servidores
+    user = $('#x-user').value.trim();
+    pass = $('#x-pass').value;
+    customName = undefined;
+    serversToTry = SERVIDORES;
   }
-  const user = opts.user !== undefined ? opts.user : $('#x-user').value.trim();
-  const pass = opts.pass !== undefined ? opts.pass : $('#x-pass').value;
-  const customName = opts.name !== undefined ? opts.name : undefined;
+
   const errBox = $('#x-error');
   const loading = $('#x-loading');
   errBox.style.display = 'none';
   if(!user || !pass){ errBox.textContent = 'Ingresa usuario y contraseña.'; errBox.style.display = 'block'; return false; }
   loading.style.display = 'flex';
-  try{
-    const auth = await xtreamApi(base, user, pass);
-    if(!auth || !auth.user_info || auth.user_info.auth !== 1) throw new Error('Credenciales inválidas.');
-    const liveCats = await xtreamApi(base, user, pass, 'get_live_categories').catch(()=>[]);
-    const liveStreams = await xtreamApi(base, user, pass, 'get_live_streams').catch(()=>[]);
-    const vodCats = await xtreamApi(base, user, pass, 'get_vod_categories').catch(()=>[]);
-    const vodStreams = await xtreamApi(base, user, pass, 'get_vod_streams').catch(()=>[]);
-    const seriesCats = await xtreamApi(base, user, pass, 'get_series_categories').catch(()=>[]);
-    const seriesList = await xtreamApi(base, user, pass, 'get_series').catch(()=>[]);
 
-    const catNameById = {}; liveCats.forEach(c=> catNameById[c.category_id] = c.category_name);
-    const channels = liveStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: catNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${base}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.m3u8` }));
+  let lastError = null;
+  for (let base of serversToTry) {
+    // Validar que el servidor esté en la lista permitida (por seguridad)
+    if (!SERVIDORES.includes(base)) continue;
+    try {
+      // Intentar autenticar
+      const auth = await xtreamApi(base, user, pass);
+      if (auth && auth.user_info && auth.user_info.auth === 1) {
+        // Autenticación exitosa con este servidor
+        // Cargar datos
+        const liveCats = await xtreamApi(base, user, pass, 'get_live_categories').catch(()=>[]);
+        const liveStreams = await xtreamApi(base, user, pass, 'get_live_streams').catch(()=>[]);
+        const vodCats = await xtreamApi(base, user, pass, 'get_vod_categories').catch(()=>[]);
+        const vodStreams = await xtreamApi(base, user, pass, 'get_vod_streams').catch(()=>[]);
+        const seriesCats = await xtreamApi(base, user, pass, 'get_series_categories').catch(()=>[]);
+        const seriesList = await xtreamApi(base, user, pass, 'get_series').catch(()=>[]);
 
-    const vodCatNameById = {}; vodCats.forEach(c=> vodCatNameById[c.category_id] = c.category_name);
-    const vod = vodStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: vodCatNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${base}/movie/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.${s.container_extension || 'mp4'}` }));
+        const catNameById = {}; liveCats.forEach(c=> catNameById[c.category_id] = c.category_name);
+        const channels = liveStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: catNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${base}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.m3u8` }));
 
-    const seriesCatNameById = {}; seriesCats.forEach(c=> seriesCatNameById[c.category_id] = c.category_name);
-    const series = seriesList.map(s=>({ name: s.name, logo: s.cover || '', group: seriesCatNameById[s.category_id] || 'General', catId: s.category_id, seriesId: s.series_id }));
+        const vodCatNameById = {}; vodCats.forEach(c=> vodCatNameById[c.category_id] = c.category_name);
+        const vod = vodStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: vodCatNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${base}/movie/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.${s.container_extension || 'mp4'}` }));
 
-    state.mode = 'xtream';
-    state.xtream = { base, user, pass };
-    state.connName = customName || base.replace(/^https?:\/\//,'');
-    state.channels = channels;
-    state.categories = buildCategoriesFromChannels(channels);
-    state.vod = vod;
-    state.vodCategories = buildCategoriesFromChannels(vod);
-    state.series = series;
-    state.seriesCategories = buildCategoriesFromChannels(series);
-    loading.style.display = 'none';
-    upsertProfile({ mode: 'xtream', xtream: { server: base, user, pass } }, customName);
-    launchApp();
-    return true;
-  }catch(err){
-    loading.style.display = 'none';
-    errBox.textContent = 'Error: ' + err.message;
-    errBox.style.display = 'block';
-    return false;
+        const seriesCatNameById = {}; seriesCats.forEach(c=> seriesCatNameById[c.category_id] = c.category_name);
+        const series = seriesList.map(s=>({ name: s.name, logo: s.cover || '', group: seriesCatNameById[s.category_id] || 'General', catId: s.category_id, seriesId: s.series_id }));
+
+        state.mode = 'xtream';
+        state.xtream = { base, user, pass };
+        state.connName = customName || base.replace(/^https?:\/\//,'');
+        state.channels = channels;
+        state.categories = buildCategoriesFromChannels(channels);
+        state.vod = vod;
+        state.vodCategories = buildCategoriesFromChannels(vod);
+        state.series = series;
+        state.seriesCategories = buildCategoriesFromChannels(series);
+        loading.style.display = 'none';
+        // Guardar perfil con el servidor que funcionó
+        upsertProfile({ mode: 'xtream', xtream: { server: base, user, pass } }, customName);
+        launchApp();
+        return true;
+      }
+    } catch(e) {
+      lastError = e;
+      // Continuar con el siguiente servidor
+    }
   }
+
+  // Si llegamos aquí, ningún servidor funcionó
+  loading.style.display = 'none';
+  errBox.textContent = 'Credenciales inválidas o servidor no disponible.';
+  errBox.style.display = 'block';
+  return false;
 }
 
 function buildCategoriesFromChannels(channels){
@@ -1144,14 +1141,7 @@ async function tryAutoReconnect(){
   if(!saved) return;
   const autoBox = $('#auto-reconnect');
   autoBox.style.display = 'flex';
-  // Verificar que el servidor guardado esté en la lista permitida
-  if(!SERVIDORES.includes(saved.xtream.server)){
-    autoBox.style.display = 'none';
-    return;
-  }
-  // Seleccionar el servidor en el dropdown
-  $('#server-select').value = saved.xtream.server;
-  $('#selected-server-display').textContent = '🌐 ' + saved.xtream.server.replace(/^https?:\/\//,'');
+  // Intentar reconectar con el servidor guardado (pasa el server específico)
   const ok = await connectXtream({ server: saved.xtream.server, user: saved.xtream.user, pass: saved.xtream.pass, name: saved.name });
   autoBox.style.display = 'none';
   if(!ok){ 
