@@ -53,7 +53,7 @@ body {
 }
 .setup-card {
   width:100%;
-  max-width:500px;
+  max-width:420px;
   background:var(--bg-secondary);
   border:1px solid var(--border-color);
   border-radius:var(--radius);
@@ -88,29 +88,17 @@ body {
   margin-top:6px;
   line-height:1.5;
 }
-.tabs {
-  display:flex;
-  padding:0 30px;
-  gap:20px;
-  border-bottom:1px solid var(--border-color);
-}
-.tab-btn {
-  background:none;
-  border:none;
-  color:var(--text-muted);
+.setup-head .server-info {
+  margin-top:10px;
   font-size:12px;
-  text-transform:uppercase;
-  letter-spacing:0.8px;
-  padding:14px 0;
-  cursor:pointer;
-  border-bottom:2px solid transparent;
-  font-weight:600;
-  transition:color 0.2s, border-color 0.2s;
+  color:var(--text-muted);
+  background:var(--bg-primary);
+  padding:8px 12px;
+  border-radius:6px;
+  border:1px solid var(--border-color);
+  font-family:monospace;
+  text-align:center;
 }
-.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
-.tab-btn:hover { color:var(--text-primary); }
-.tab-panel { display:none; padding:24px 30px 30px; }
-.tab-panel.active { display:block; }
 .field { margin-bottom:16px; }
 .field label {
   display:block;
@@ -121,7 +109,7 @@ body {
   color:var(--text-secondary);
   margin-bottom:6px;
 }
-.field input, .field textarea, .field select {
+.field input, .field select {
   width:100%;
   background:var(--bg-primary);
   border:1px solid var(--border-color);
@@ -131,31 +119,8 @@ body {
   font-size:14px;
   transition:border-color 0.2s;
 }
-.field input:focus, .field textarea:focus { border-color:var(--accent-dim); }
-.field textarea { min-height:80px; resize:vertical; font-size:13px; }
-.row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.file-drop {
-  border:1px dashed var(--border-color);
-  border-radius:8px;
-  padding:14px;
-  text-align:center;
-  color:var(--text-secondary);
-  font-size:13px;
-  cursor:pointer;
-  transition:border-color 0.2s;
-}
-.file-drop:hover { border-color:var(--accent-dim); }
-.or-sep {
-  display:flex;
-  align-items:center;
-  gap:12px;
-  color:var(--text-muted);
-  font-size:11px;
-  text-transform:uppercase;
-  margin:14px 0;
-  letter-spacing:1px;
-}
-.or-sep::before, .or-sep::after { content:''; flex:1; height:1px; background:var(--border-color); }
+.field input:focus, .field select:focus { border-color:var(--accent-dim); }
+.field select option { background:var(--bg-primary); color:var(--text-primary); }
 .btn {
   width:100%;
   background:var(--accent);
@@ -170,23 +135,7 @@ body {
 }
 .btn:hover { filter:brightness(1.08); }
 .btn:active { transform:scale(0.98); }
-.btn-ghost {
-  background:transparent;
-  border:1px solid var(--border-color);
-  color:var(--text-primary);
-}
-.btn-ghost:hover { background:var(--bg-card); border-color:var(--text-muted); }
-.notice {
-  margin-top:14px;
-  font-size:12px;
-  color:var(--text-secondary);
-  line-height:1.6;
-  background:var(--bg-primary);
-  border:1px solid var(--border-color);
-  border-radius:8px;
-  padding:10px 12px;
-}
-.notice b { color:var(--accent); }
+.btn:disabled { opacity:0.5; cursor:not-allowed; }
 .loading-line {
   display:none;
   align-items:center;
@@ -756,55 +705,33 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
         <div class="brand-mark"></div>
         <h1>Código Master TV</h1>
       </div>
-      <p>Reproductor IPTV para listas M3U y Xtream Codes. Todo en tu navegador.</p>
+      <p>Reproductor IPTV para servidores seleccionados</p>
+      <div class="server-info" id="selected-server-display">🌐 zonacero.lat:8080</div>
       <div class="loading-line" id="auto-reconnect" style="display:none;">
         <div class="spinner"></div> Reconectando…
       </div>
     </div>
     <div class="saved-profiles" id="saved-profiles"></div>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="m3u">M3U</button>
-      <button class="tab-btn" data-tab="xtream">Xtream</button>
-    </div>
-    <div class="tab-panel active" id="panel-m3u">
-      <div class="field">
-        <label>Nombre (opcional)</label>
-        <input type="text" id="m3u-name" placeholder="Mi lista">
-      </div>
-      <div class="field">
-        <label>URL de la lista</label>
-        <input type="text" id="m3u-url" placeholder="https://ejemplo.com/lista.m3u">
-      </div>
-      <div class="or-sep">o</div>
-      <div class="field">
-        <div class="file-drop" id="m3u-drop">📁 Subir archivo .m3u</div>
-        <input type="file" id="m3u-file" accept=".m3u,.m3u8,text/plain" style="display:none;">
-      </div>
-      <div class="or-sep">o pega el contenido</div>
-      <div class="field">
-        <textarea id="m3u-paste" placeholder="#EXTM3U..."></textarea>
-      </div>
-      <button class="btn" id="m3u-load-btn">Cargar lista</button>
-      <div class="loading-line" id="m3u-loading"><div class="spinner"></div> Procesando…</div>
-      <div class="error-box" id="m3u-error"></div>
-    </div>
-    <div class="tab-panel" id="panel-xtream">
-      <div class="field">
-        <label>Nombre (opcional)</label>
-        <input type="text" id="x-name" placeholder="Mi servidor">
-      </div>
+    <div style="padding: 0 30px 24px;">
       <div class="field">
         <label>Servidor</label>
-        <input type="text" id="x-server" placeholder="http://servidor.com:8080">
+        <select id="server-select">
+          <option value="http://zonacero.lat:8080">zonacero.lat:8080</option>
+          <option value="http://liontv.es:8080">liontv.es:8080</option>
+          <option value="http://tv.proyectox.vip:8080">tv.proyectox.vip:8080</option>
+        </select>
       </div>
-      <div class="row2">
-        <div class="field"><label>Usuario</label><input type="text" id="x-user" placeholder="usuario"></div>
-        <div class="field"><label>Contraseña</label><input type="password" id="x-pass" placeholder="••••"></div>
+      <div class="field">
+        <label>Usuario</label>
+        <input type="text" id="x-user" placeholder="Tu usuario" value="">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="x-pass" placeholder="••••••••">
       </div>
       <button class="btn" id="x-load-btn">Conectar</button>
       <div class="loading-line" id="x-loading"><div class="spinner"></div> Autenticando…</div>
       <div class="error-box" id="x-error"></div>
-      <div class="notice"><b>Nota:</b> Si falla, puede ser por CORS. Prueba con otra URL o usa un proxy.</div>
     </div>
   </div>
 </div>
@@ -832,10 +759,10 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 <!-- ===== MODAL ===== -->
 <div id="my-lists-modal">
   <div class="my-lists-box">
-    <div class="my-lists-head"><span>📋 Mis listas</span><button class="close-x" id="my-lists-close">✕</button></div>
+    <div class="my-lists-head"><span>📋 Mis cuentas</span><button class="close-x" id="my-lists-close">✕</button></div>
     <div class="my-lists-body" id="my-lists-body"></div>
     <div class="my-lists-foot">
-      <button class="btn-ghost" id="my-lists-add-btn" style="width:100%;">+ Agregar lista</button>
+      <button class="btn-ghost" id="my-lists-add-btn" style="width:100%;">+ Agregar otra cuenta</button>
     </div>
   </div>
 </div>
@@ -859,9 +786,16 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 (function(){
 "use strict";
 
+// ===== LISTA DE SERVIDORES PERMITIDOS =====
+const SERVIDORES = [
+  'http://zonacero.lat:8080',
+  'http://liontv.es:8080',
+  'http://tv.proyectox.vip:8080'
+];
+
 // ===== STATE =====
 let state = {
-  mode: null,
+  mode: 'xtream',
   connName: '',
   channels: [],
   categories: [],
@@ -882,22 +816,15 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
 // ===== PERSISTENCE =====
-const PROFILES_KEY = 'senal_iptv_profiles';
+const PROFILES_KEY = 'codigomaster_profiles';
 function loadProfiles(){ try{ return JSON.parse(localStorage.getItem(PROFILES_KEY)) || []; }catch(e){ return []; } }
 function saveProfiles(list){ try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); }catch(e){} }
 
 function profileKeyOf(p){
-  if(p.mode === 'm3u') return 'm3u:' + (p.m3u.url || p.m3u.pasted || '').slice(0,120);
-  if(p.mode === 'xtream') return 'xtream:' + p.xtream.server + ':' + p.xtream.user;
-  return 'unknown';
+  return 'xtream:' + p.xtream.server + ':' + p.xtream.user;
 }
 function defaultProfileName(p){
-  if(p.mode === 'm3u'){
-    if(p.m3u.url){ try{ return new URL(p.m3u.url).hostname; }catch(e){ return 'Lista M3U'; } }
-    return 'Lista local';
-  }
-  if(p.mode === 'xtream') return p.xtream.server.replace(/^https?:\/\//,'');
-  return 'Lista';
+  return p.xtream.server.replace(/^https?:\/\//,'');
 }
 function upsertProfile(profile, customName){
   const list = loadProfiles();
@@ -914,8 +841,8 @@ function profileCardsHtml(list, currentKey){
   if(!list.length) return '';
   let html = '';
   list.forEach(p=>{
-    const sub = p.mode === 'xtream' ? p.xtream.server.replace(/^https?:\/\//,'') : (p.m3u.url ? new URL(p.m3u.url).hostname : 'Archivo local');
-    const icon = p.mode === 'xtream' ? '🛰️' : '📺';
+    const sub = p.xtream.server.replace(/^https?:\/\//,'');
+    const icon = '🛰️';
     const isCurrent = currentKey && profileKeyOf(p) === currentKey;
     html += `<div class="profile-card" data-id="${escapeAttr(p.id)}">
       <div class="profile-icon">${icon}</div>
@@ -933,7 +860,7 @@ function renderSavedProfiles(){
   const box = $('#saved-profiles');
   const list = loadProfiles().sort((a,b)=> (b.lastUsed||0) - (a.lastUsed||0));
   if(!list.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
-  let html = `<div class="saved-profiles-title">Tus listas guardadas</div>`;
+  let html = `<div class="saved-profiles-title">Tus cuentas guardadas</div>`;
   html += profileCardsHtml(list, currentProfileKey());
   html += `<div class="saved-profiles-sep">o agrega una nueva</div>`;
   box.innerHTML = html;
@@ -942,15 +869,13 @@ function renderSavedProfiles(){
   box.querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); deleteProfile(b.dataset.del); }));
 }
 function currentProfileKey(){
-  if(!state.mode) return null;
-  if(state.mode === 'm3u') return profileKeyOf({ mode:'m3u', m3u:{ url:$('#m3u-url').value.trim(), pasted:'' } });
-  if(state.mode === 'xtream' && state.xtream) return profileKeyOf({ mode:'xtream', xtream:{ server: state.xtream.base, user: state.xtream.user } });
-  return null;
+  if(!state.xtream) return null;
+  return profileKeyOf({ mode:'xtream', xtream:{ server: state.xtream.base, user: state.xtream.user } });
 }
 function renderMyListsModal(){
   const body = $('#my-lists-body');
   const list = loadProfiles().sort((a,b)=> (b.lastUsed||0) - (a.lastUsed||0));
-  if(!list.length){ body.innerHTML = `<div class="my-lists-empty">Aún no tienes listas guardadas.</div>`; return; }
+  if(!list.length){ body.innerHTML = `<div class="my-lists-empty">Aún no tienes cuentas guardadas.</div>`; return; }
   body.innerHTML = profileCardsHtml(list, currentProfileKey());
   body.querySelectorAll('[data-use]').forEach(b=> b.addEventListener('click', async ()=>{ closeMyListsModal(); await useProfile(b.dataset.use); }));
   body.querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); deleteProfile(b.dataset.del); renderMyListsModal(); }));
@@ -958,45 +883,24 @@ function renderMyListsModal(){
 function openMyListsModal(){ renderMyListsModal(); $('#my-lists-modal').classList.add('show'); }
 function closeMyListsModal(){ $('#my-lists-modal').classList.remove('show'); }
 
-// ===== EVENT LISTENERS PARA BOTONES =====
-// My Lists
+// ===== EVENT LISTENERS =====
 $('#my-lists-btn').addEventListener('click', openMyListsModal);
 $('#my-lists-close').addEventListener('click', closeMyListsModal);
 $('#my-lists-modal').addEventListener('click', e=>{ if(e.target.id === 'my-lists-modal') closeMyListsModal(); });
 $('#my-lists-add-btn').addEventListener('click', ()=>{ closeMyListsModal(); $('#disconnect-btn').click(); });
 
-// Sidebar toggle
 $('#hamburger-btn').addEventListener('click', ()=>{ $('#sidebar').classList.toggle('open'); $('#sidebar-scrim').classList.toggle('show'); });
 $('#sidebar-scrim').addEventListener('click', ()=>{ $('#sidebar').classList.remove('open'); $('#sidebar-scrim').classList.remove('show'); });
 
-// Setup tabs
-$$('.tab-btn').forEach(b=> b.addEventListener('click', ()=>{
-  $$('.tab-btn').forEach(t=> t.classList.remove('active'));
-  $$('.tab-panel').forEach(p=> p.classList.remove('active'));
-  b.classList.add('active');
-  $('#panel-'+b.dataset.tab).classList.add('active');
-}));
+$('#server-select').addEventListener('change', function(){
+  $('#selected-server-display').textContent = '🌐 ' + this.value.replace(/^https?:\/\//,'');
+});
 
-// M3U file drop
-$('#m3u-drop').addEventListener('click', ()=> $('#m3u-file').click());
-$('#m3u-drop').addEventListener('dragover', e=> e.preventDefault());
-$('#m3u-drop').addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files[0]; if(f) readM3UFile(f); });
-$('#m3u-file').addEventListener('change', e=>{ const f = e.target.files[0]; if(f) readM3UFile(f); });
-function readM3UFile(file){ const reader = new FileReader(); reader.onload = ()=> { $('#m3u-paste').value = reader.result; }; reader.readAsText(file); }
-
-// M3U load button
-$('#m3u-load-btn').addEventListener('click', ()=> loadM3U());
-
-// Xtream connect button
 $('#x-load-btn').addEventListener('click', ()=> connectXtream());
-
-// Disconnect
 $('#disconnect-btn').addEventListener('click', disconnectApp);
-
-// Player close
 $('#player-close').addEventListener('click', closePlayer);
 
-// ===== FUNCIONES =====
+// ===== HELPERS =====
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escapeAttr(s){ return escapeHtml(s); }
 function makeActivatable(el, handler){
@@ -1007,81 +911,31 @@ function makeActivatable(el, handler){
 }
 function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#sidebar-scrim').classList.remove('show'); }
 
-// ===== M3U PARSER =====
-function parseM3U(text){
-  const lines = text.split(/\r?\n/);
-  const items = [];
-  let current = null;
-  for(let i=0;i<lines.length;i++){
-    const line = lines[i].trim();
-    if(!line) continue;
-    if(line.startsWith('#EXTINF')){
-      const attrs = {};
-      const attrRegex = /([a-zA-Z0-9\-]+)="([^"]*)"/g;
-      let m;
-      while((m = attrRegex.exec(line)) !== null){ attrs[m[1].toLowerCase()] = m[2]; }
-      const nameMatch = line.match(/,(.*)$/);
-      const name = nameMatch ? nameMatch[1].trim() : 'Sin nombre';
-      current = { name: attrs['tvg-name'] || name, logo: attrs['tvg-logo'] || '', group: attrs['group-title'] || 'General', tvgId: attrs['tvg-id'] || '', url: '' };
-    } else if(!line.startsWith('#')) {
-      if(current){ current.url = line; items.push(current); current = null; }
-    }
-  }
-  return items;
-}
-function buildCategoriesFromChannels(channels){
-  const map = {};
-  channels.forEach(c=>{ const g = c.group || 'General'; map[g] = (map[g]||0)+1; });
-  return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({id:name, name, count:map[name]}));
-}
-
-// ===== LOAD M3U =====
-async function loadM3U(opts){
-  opts = opts || {};
-  const url = opts.url !== undefined ? opts.url : $('#m3u-url').value.trim();
-  const pasted = opts.pasted !== undefined ? opts.pasted : $('#m3u-paste').value.trim();
-  const customName = opts.name !== undefined ? opts.name : ($('#m3u-name').value.trim() || undefined);
-  const errBox = $('#m3u-error');
-  const loading = $('#m3u-loading');
-  errBox.style.display = 'none';
-  if(!url && !pasted){ errBox.textContent = 'Introduce una URL o pega el contenido.'; errBox.style.display = 'block'; return false; }
-  loading.style.display = 'flex';
-  try{
-    let text = pasted;
-    if(!text && url){ const res = await fetch(url); if(!res.ok) throw new Error('HTTP '+res.status); text = await res.text(); }
-    if(!text.includes('#EXTM3U') && !text.includes('#EXTINF')) throw new Error('No parece una lista M3U válida.');
-    const channels = parseM3U(text);
-    if(!channels.length) throw new Error('No se encontraron canales.');
-    state.mode = 'm3u';
-    state.channels = channels;
-    state.categories = buildCategoriesFromChannels(channels);
-    state.connName = customName || (url ? new URL(url).hostname : 'Lista local');
-    loading.style.display = 'none';
-    upsertProfile({ mode: 'm3u', m3u: { url, pasted: url ? '' : pasted } }, customName);
-    launchApp();
-    return true;
-  }catch(err){
-    loading.style.display = 'none';
-    errBox.textContent = 'Error: ' + err.message;
-    errBox.style.display = 'block';
-    return false;
-  }
-}
-
 // ===== XTREAM =====
-function normalizeServer(s){ s = s.trim(); if(!/^https?:\/\//i.test(s)) s = 'http://'+s; return s.replace(/\/+$/,''); }
-async function xtreamApi(base, user, pass, action, extra){ const url = `${base}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}${action ? '&action='+action : ''}${extra||''}`; const res = await fetch(url); if(!res.ok) throw new Error('HTTP '+res.status); return res.json(); }
+async function xtreamApi(base, user, pass, action, extra){ 
+  const url = `${base}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}${action ? '&action='+action : ''}${extra||''}`; 
+  const res = await fetch(url); 
+  if(!res.ok) throw new Error('HTTP '+res.status); 
+  return res.json(); 
+}
+
 async function connectXtream(opts){
   opts = opts || {};
-  const serverRaw = opts.server !== undefined ? opts.server : $('#x-server').value.trim();
+  // Si se pasa server en opts, lo usamos, si no, tomamos del select
+  let base = opts.server || $('#server-select').value;
+  // Validar que el servidor esté en la lista permitida
+  if(!SERVIDORES.includes(base)){
+    $('#x-error').textContent = 'Servidor no autorizado.';
+    $('#x-error').style.display = 'block';
+    return false;
+  }
   const user = opts.user !== undefined ? opts.user : $('#x-user').value.trim();
   const pass = opts.pass !== undefined ? opts.pass : $('#x-pass').value;
-  const customName = opts.name !== undefined ? opts.name : ($('#x-name').value.trim() || undefined);
+  const customName = opts.name !== undefined ? opts.name : undefined;
   const errBox = $('#x-error');
   const loading = $('#x-loading');
   errBox.style.display = 'none';
-  if(!serverRaw || !user || !pass){ errBox.textContent = 'Completa todos los campos.'; errBox.style.display = 'block'; return false; }
-  const base = normalizeServer(serverRaw);
+  if(!user || !pass){ errBox.textContent = 'Ingresa usuario y contraseña.'; errBox.style.display = 'block'; return false; }
   loading.style.display = 'flex';
   try{
     const auth = await xtreamApi(base, user, pass);
@@ -1123,6 +977,12 @@ async function connectXtream(opts){
   }
 }
 
+function buildCategoriesFromChannels(channels){
+  const map = {};
+  channels.forEach(c=>{ const g = c.group || 'General'; map[g] = (map[g]||0)+1; });
+  return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({id:name, name, count:map[name]}));
+}
+
 // ===== APP LAUNCH =====
 function launchApp(){
   $('#setup').style.display = 'none';
@@ -1131,32 +991,30 @@ function launchApp(){
   const tabsWrap = $('#top-tabs');
   const mobileTabsWrap = $('#mobile-type-tabs');
   tabsWrap.innerHTML = ''; mobileTabsWrap.innerHTML = '';
-  if(state.mode === 'xtream'){
-    const onTabClick = (key)=>{ state.activeType = key; state.renderLimit = 60; state.activeCategory = 'all'; state.viewingSeries = null; renderTabs(); renderSidebar(); renderMain(); closeSidebar(); };
-    [['live','TV en vivo'], ['vod','Películas'], ['series','Series']].forEach(([key,label])=>{
-      [tabsWrap, mobileTabsWrap].forEach(container=>{
-        const b = document.createElement('button');
-        b.className = 'top-tab' + (key===state.activeType ? ' active' : '');
-        b.dataset.key = key;
-        b.textContent = label;
-        b.addEventListener('click', ()=> onTabClick(key));
-        container.appendChild(b);
-      });
+  const onTabClick = (key)=>{ state.activeType = key; state.renderLimit = 60; state.activeCategory = 'all'; state.viewingSeries = null; renderTabs(); renderSidebar(); renderMain(); closeSidebar(); };
+  [['live','TV en vivo'], ['vod','Películas'], ['series','Series']].forEach(([key,label])=>{
+    [tabsWrap, mobileTabsWrap].forEach(container=>{
+      const b = document.createElement('button');
+      b.className = 'top-tab' + (key===state.activeType ? ' active' : '');
+      b.dataset.key = key;
+      b.textContent = label;
+      b.addEventListener('click', ()=> onTabClick(key));
+      container.appendChild(b);
     });
-  }
+  });
   renderSidebar();
   renderMain();
   $('#search-input').oninput = ()=>{ state.renderLimit = 60; renderMain(); };
 }
 function renderTabs(){ $$('.top-tab').forEach(b=> b.classList.toggle('active', b.dataset.key === state.activeType)); }
 function currentDataset(){
-  if(state.mode !== 'xtream' || state.activeType === 'live') return state.channels;
+  if(state.activeType === 'live') return state.channels;
   if(state.activeType === 'vod') return state.vod;
   if(state.activeType === 'series') return state.series;
   return state.channels;
 }
 function currentCategories(){
-  if(state.mode !== 'xtream' || state.activeType === 'live') return state.categories;
+  if(state.activeType === 'live') return state.categories;
   if(state.activeType === 'vod') return state.vodCategories;
   if(state.activeType === 'series') return state.seriesCategories;
   return state.categories;
@@ -1174,17 +1032,17 @@ function renderSidebar(){
 function renderMain(){
   const main = $('#main');
   const query = $('#search-input').value.trim().toLowerCase();
-  if(state.mode === 'xtream' && state.activeType === 'series' && state.viewingSeries){ renderSeriesDetail(main, state.viewingSeries); return; }
+  if(state.activeType === 'series' && state.viewingSeries){ renderSeriesDetail(main, state.viewingSeries); return; }
   let data = currentDataset();
   if(state.activeCategory !== 'all') data = data.filter(c => c.group === state.activeCategory);
   if(query) data = data.filter(c => c.name.toLowerCase().includes(query));
-  const label = state.mode === 'xtream' ? {live:'TV en vivo', vod:'Películas', series:'Series'}[state.activeType] : 'Canales';
+  const label = {live:'TV en vivo', vod:'Películas', series:'Series'}[state.activeType];
   let html = `<div class="grid-header"><h2>${label}${state.activeCategory!=='all' ? ' — '+escapeHtml(state.activeCategory) : ''}</h2><span class="grid-count">${data.length} elementos</span></div>`;
   if(!data.length){ main.innerHTML = html + `<div class="empty-state"><div style="font-size:36px;">📡</div><div>Sin resultados</div></div>`; return; }
   const limit = Math.min(state.renderLimit || 60, data.length);
   const visible = data.slice(0, limit);
   const hasMore = data.length > limit;
-  if(state.mode === 'xtream' && state.activeType === 'series'){
+  if(state.activeType === 'series'){
     html += `<div class="series-list">`;
     visible.forEach((s, idx)=>{ html += `<div class="series-row" data-idx="${idx}">${s.logo ? `<img loading="lazy" src="${escapeAttr(s.logo)}" onerror="this.style.display='none'">` : `<div style="width:48px;height:68px;background:var(--bg-primary);border-radius:6px;"></div>`}<div class="info"><div class="t">${escapeHtml(s.name)}</div><div class="g">${escapeHtml(s.group)}</div></div><span style="color:var(--text-muted);">▸</span></div>`; });
     html += `</div>`;
@@ -1195,7 +1053,7 @@ function renderMain(){
     if(moreBtn) moreBtn.addEventListener('click', ()=>{ state.renderLimit = limit + 60; renderMain(); });
     return;
   }
-  const isPosterView = state.mode === 'xtream' && (state.activeType === 'vod' || state.activeType === 'series');
+  const isPosterView = (state.activeType === 'vod' || state.activeType === 'series');
   html += `<div class="channel-grid${isPosterView ? ' poster-grid' : ''}">`;
   visible.forEach((c, idx)=>{ html += `<div class="chan-card${isPosterView ? ' poster' : ''}" data-idx="${idx}"><div class="chan-logo-wrap">${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" onerror="this.parentElement.innerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}</div><div class="chan-name">${escapeHtml(c.name)}</div><div class="chan-meta">${String(idx+1).padStart(3,'0')}</div></div>`; });
   html += `</div>`;
@@ -1274,9 +1132,8 @@ function disconnectApp(){
   $('#player-overlay').classList.remove('show');
   $('#app').classList.remove('show');
   $('#setup').style.display = 'flex';
-  $('#m3u-name').value=''; $('#m3u-url').value=''; $('#m3u-paste').value='';
-  $('#x-name').value=''; $('#x-server').value=''; $('#x-user').value=''; $('#x-pass').value='';
-  state = {mode:null, connName:'', channels:[], categories:[], activeCategory:'all', activeType:'live', xtream:null, vod:[], vodCategories:[], series:[], seriesCategories:[], seriesEpisodesCache:{}, viewingSeries:null, hls:null, renderLimit:60};
+  $('#x-user').value = ''; $('#x-pass').value = '';
+  state = {mode:'xtream', connName:'', channels:[], categories:[], activeCategory:'all', activeType:'live', xtream:null, vod:[], vodCategories:[], series:[], seriesCategories:[], seriesEpisodesCache:{}, viewingSeries:null, hls:null, renderLimit:60};
   renderSavedProfiles();
 }
 
@@ -1287,17 +1144,20 @@ async function tryAutoReconnect(){
   if(!saved) return;
   const autoBox = $('#auto-reconnect');
   autoBox.style.display = 'flex';
-  let ok = false;
-  if(saved.mode === 'm3u' && saved.m3u) ok = await loadM3U({ url: saved.m3u.url || '', pasted: saved.m3u.pasted || '', name: saved.name });
-  else if(saved.mode === 'xtream' && saved.xtream){
-    $('#x-server').value = saved.xtream.server || '';
+  // Verificar que el servidor guardado esté en la lista permitida
+  if(!SERVIDORES.includes(saved.xtream.server)){
+    autoBox.style.display = 'none';
+    return;
+  }
+  // Seleccionar el servidor en el dropdown
+  $('#server-select').value = saved.xtream.server;
+  $('#selected-server-display').textContent = '🌐 ' + saved.xtream.server.replace(/^https?:\/\//,'');
+  const ok = await connectXtream({ server: saved.xtream.server, user: saved.xtream.user, pass: saved.xtream.pass, name: saved.name });
+  autoBox.style.display = 'none';
+  if(!ok){ 
     $('#x-user').value = saved.xtream.user || '';
     $('#x-pass').value = saved.xtream.pass || '';
-    $('.tab-btn[data-tab="xtream"]')?.click();
-    ok = await connectXtream({ server: saved.xtream.server, user: saved.xtream.user, pass: saved.xtream.pass, name: saved.name });
   }
-  autoBox.style.display = 'none';
-  if(!ok && saved.mode === 'm3u' && saved.m3u){ if(saved.m3u.url) $('#m3u-url').value = saved.m3u.url; if(saved.m3u.pasted) $('#m3u-paste').value = saved.m3u.pasted; }
 }
 tryAutoReconnect();
 
