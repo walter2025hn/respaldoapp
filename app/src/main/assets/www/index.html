@@ -886,12 +886,11 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 "use strict";
 
 // ===== LISTA DE SERVIDORES PERMITIDOS (ocultos) =====
-// SE HA AÑADIDO http://neospaxy.top:8080
 const SERVIDORES = [
   'http://zonacero.lat:8080',
   'http://liontv.es:8080',
   'http://tv.proyectox.vip:8080',
-  'http://neospaxy.top:8080'  // <--- NUEVO SERVIDOR
+  'http://neospaxy.top:8080'
 ];
 
 // ===== STATE =====
@@ -1278,12 +1277,34 @@ function playStream(url, title){
   const isM3U8 = /\.m3u8($|\?)/i.test(url);
   if(isM3U8 && window.Hls && Hls.isSupported()){
     status.textContent = 'Conectando…';
-    const hls = new Hls({ maxBufferLength: 30 });
+    
+    // ----- CONFIGURACIÓN MEJORADA DE HLS PARA EVITAR PARONES -----
+    const hls = new Hls({
+      maxBufferLength: 60,               // Aumenta el buffer máximo
+      liveDurationInfinity: true,        // Para streams en vivo
+      liveSyncDurationCount: 3,          // Sincronización en vivo
+      backbufferLength: 30,              // Libera buffer antiguo
+      enableWorker: true,                // Usa worker para mejor rendimiento
+      lowLatencyMode: false,             // Prioriza estabilidad sobre latencia
+      autoLevelCapping: -1,              // Usa el mejor nivel disponible
+      maxBufferSize: 60 * 1024 * 1024    // 60MB de buffer
+    });
+    // ----------------------------------------------------------
+    
     state.hls = hls;
     hls.loadSource(url);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, ()=>{ status.textContent = 'Reproduciendo en vivo'; video.play().catch(()=>{}); });
-    hls.on(Hls.Events.ERROR, (evt,data)=>{ if(data.fatal){ status.classList.add('err'); status.textContent = 'Error de reproducción'; extBtn.classList.add('show'); } });
+    hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
+      status.textContent = 'Reproduciendo en vivo';
+      video.play().catch(()=>{});
+    });
+    hls.on(Hls.Events.ERROR, (evt,data)=>{
+      if(data.fatal){
+        status.classList.add('err');
+        status.textContent = 'Error de reproducción';
+        extBtn.classList.add('show');
+      }
+    });
   } else if(video.canPlayType('application/vnd.apple.mpegurl') || video.canPlayType('video/mp4')){
     status.textContent = 'Conectando…';
     video.src = url;
