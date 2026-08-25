@@ -17,7 +17,6 @@
         android:background="#000000"
         android:visibility="gone" />
 
-    <!-- Native ExoPlayer overlay optimizado para TV -->
     <FrameLayout
         android:id="@+id/native_player_overlay"
         android:layout_width="match_parent"
