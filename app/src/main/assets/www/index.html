@@ -1158,6 +1158,41 @@ function buildCategoriesFromChannels(channels){
   return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({id:name, name, count:map[name]}));
 }
 
+// ===== NAVEGACIÓN CON HISTORIAL (NUEVO) =====
+// Guarda el estado actual en el historial del navegador
+function pushHistoryState() {
+  const stateData = {
+    activeType: state.activeType,
+    activeCategory: state.activeCategory,
+    viewingSeries: state.viewingSeries ? state.viewingSeries.seriesId : null
+  };
+  window.history.pushState(stateData, '', '');
+}
+
+// Restaura el estado desde el historial al hacer 'back' o 'forward'
+window.addEventListener('popstate', function(event) {
+  const stateData = event.state;
+  if (stateData) {
+    // Restaurar solo si hay un estado válido
+    if (stateData.activeType) state.activeType = stateData.activeType;
+    if (stateData.activeCategory) state.activeCategory = stateData.activeCategory;
+    if (stateData.viewingSeries) {
+      // Buscar la serie por su id
+      const found = state.series.find(s => s.seriesId === stateData.viewingSeries);
+      state.viewingSeries = found || null;
+    } else {
+      state.viewingSeries = null;
+    }
+    // Re-renderizar la interfaz
+    renderTabs();
+    renderSidebar();
+    renderMain();
+    closeSidebar();
+  } else {
+    // Si no hay estado (primer estado), no hacer nada
+  }
+});
+
 // ===== APP LAUNCH =====
 function launchApp(){
   $('#setup').style.display = 'none';
@@ -1166,7 +1201,17 @@ function launchApp(){
   const tabsWrap = $('#top-tabs');
   const mobileTabsWrap = $('#mobile-type-tabs');
   tabsWrap.innerHTML = ''; mobileTabsWrap.innerHTML = '';
-  const onTabClick = (key)=>{ state.activeType = key; state.renderLimit = 60; state.activeCategory = 'all'; state.viewingSeries = null; renderTabs(); renderSidebar(); renderMain(); closeSidebar(); };
+  const onTabClick = (key)=>{ 
+    state.activeType = key; 
+    state.renderLimit = 60; 
+    state.activeCategory = 'all'; 
+    state.viewingSeries = null; 
+    renderTabs(); 
+    renderSidebar(); 
+    renderMain(); 
+    closeSidebar();
+    pushHistoryState(); // Guardar historial al cambiar de pestaña
+  };
   [['live','TV en vivo'], ['vod','Películas'], ['series','Series']].forEach(([key,label])=>{
     [tabsWrap, mobileTabsWrap].forEach(container=>{
       const b = document.createElement('button');
@@ -1180,6 +1225,8 @@ function launchApp(){
   renderSidebar();
   renderMain();
   $('#search-input').oninput = ()=>{ state.renderLimit = 60; renderMain(); };
+  // Guardar estado inicial
+  pushHistoryState();
 }
 function renderTabs(){ $$('.top-tab').forEach(b=> b.classList.toggle('active', b.dataset.key === state.activeType)); }
 function currentDataset(){
@@ -1202,12 +1249,23 @@ function renderSidebar(){
   html += `<div class="cat-item ${state.activeCategory==='all'?'active':''}" data-cat="all"><span>Todos</span><span class="cat-count">${total}</span></div>`;
   cats.forEach(c=>{ html += `<div class="cat-item ${state.activeCategory===c.id?'active':''}" data-cat="${escapeAttr(c.id)}"><span>${escapeHtml(c.name)}</span><span class="cat-count">${c.count}</span></div>`; });
   sb.innerHTML = html;
-  $$('.cat-item').forEach(el=>{ makeActivatable(el, ()=>{ state.activeCategory = el.dataset.cat; state.renderLimit = 60; state.viewingSeries = null; renderSidebar(); renderMain(); closeSidebar(); }); });
+  $$('.cat-item').forEach(el=>{ makeActivatable(el, ()=>{ 
+    state.activeCategory = el.dataset.cat; 
+    state.renderLimit = 60; 
+    state.viewingSeries = null; 
+    renderSidebar(); 
+    renderMain(); 
+    closeSidebar();
+    pushHistoryState(); // Guardar historial al cambiar categoría
+  }); });
 }
 function renderMain(){
   const main = $('#main');
   const query = $('#search-input').value.trim().toLowerCase();
-  if(state.activeType === 'series' && state.viewingSeries){ renderSeriesDetail(main, state.viewingSeries); return; }
+  if(state.activeType === 'series' && state.viewingSeries){ 
+    renderSeriesDetail(main, state.viewingSeries); 
+    return; 
+  }
   let data = currentDataset();
   if(state.activeCategory !== 'all') data = data.filter(c => c.group === state.activeCategory);
   if(query) data = data.filter(c => c.name.toLowerCase().includes(query));
@@ -1223,7 +1281,7 @@ function renderMain(){
     html += `</div>`;
     if(hasMore) html += `<div style="text-align:center;margin-top:18px;"><button class="btn-ghost" id="load-more-btn">Cargar más (${limit} de ${data.length})</button></div>`;
     main.innerHTML = html;
-    $$('.series-row').forEach(el=>{ makeActivatable(el, ()=>{ const s = visible[parseInt(el.dataset.idx)]; state.viewingSeries = s; renderMain(); }); });
+    $$('.series-row').forEach(el=>{ makeActivatable(el, ()=>{ const s = visible[parseInt(el.dataset.idx)]; state.viewingSeries = s; renderMain(); pushHistoryState(); }); });
     const moreBtn = $('#load-more-btn');
     if(moreBtn) moreBtn.addEventListener('click', ()=>{ state.renderLimit = limit + 60; renderMain(); });
     return;
@@ -1241,7 +1299,7 @@ function renderMain(){
 
 async function renderSeriesDetail(main, series){
   main.innerHTML = `<div class="back-link" id="back-to-series">← Volver a Series</div><div class="grid-header"><h2>${escapeHtml(series.name)}</h2></div><div style="color:var(--text-secondary);">Cargando episodios…</div>`;
-  $('#back-to-series').addEventListener('click', ()=>{ state.viewingSeries = null; renderMain(); });
+  $('#back-to-series').addEventListener('click', ()=>{ state.viewingSeries = null; renderMain(); pushHistoryState(); });
   try{
     const {base, user, pass} = state.xtream;
     let info = state.seriesEpisodesCache[series.seriesId];
@@ -1252,9 +1310,9 @@ async function renderSeriesDetail(main, series){
     if(!seasons.length){ html += `<div class="empty-state"><div>No hay episodios disponibles</div></div>`; }
     seasons.forEach(season=>{ html += `<div class="sb-title" style="padding-left:0;margin-top:14px;">Temporada ${season}</div><div class="ep-list">`; episodes[season].forEach(ep=>{ html += `<div class="ep-row" data-season="${season}" data-epid="${ep.id}"><span>${ep.episode_num}. ${escapeHtml(ep.title || 'Episodio '+ep.episode_num)}</span><span style="color:var(--accent);">▶</span></div>`; }); html += `</div>`; });
     main.innerHTML = html;
-    $('#back-to-series2').addEventListener('click', ()=>{ state.viewingSeries = null; renderMain(); });
+    $('#back-to-series2').addEventListener('click', ()=>{ state.viewingSeries = null; renderMain(); pushHistoryState(); });
     $$('.ep-row').forEach(el=>{ makeActivatable(el, ()=>{ const season = el.dataset.season; const epId = el.dataset.epid; const ep = episodes[season].find(e=>String(e.id)===epId); const {base, user, pass} = state.xtream; const ext = ep.container_extension || 'mp4'; const url = `${base}/series/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${ep.id}.${ext}`; playStream(url, `${series.name} — T${season}E${ep.episode_num}`); }); });
-  }catch(err){ main.innerHTML = `<div class="back-link" id="back-to-series3">← Volver a Series</div><div class="error-box" style="display:block;">Error: ${escapeHtml(err.message)}</div>`; $('#back-to-series3').addEventListener('click', ()=>{ state.viewingSeries = null; renderMain(); }); }
+  }catch(err){ main.innerHTML = `<div class="back-link" id="back-to-series3">← Volver a Series</div><div class="error-box" style="display:block;">Error: ${escapeHtml(err.message)}</div>`; $('#back-to-series3').addEventListener('click', ()=>{ state.viewingSeries = null; renderMain(); pushHistoryState(); }); }
 }
 
 // ===== PLAYER =====
@@ -1332,6 +1390,8 @@ function disconnectApp(){
   $('#x-user').value = ''; $('#x-pass').value = '';
   state = {mode:'xtream', connName:'', channels:[], categories:[], activeCategory:'all', activeType:'live', xtream:null, vod:[], vodCategories:[], series:[], seriesCategories:[], seriesEpisodesCache:{}, viewingSeries:null, hls:null, renderLimit:60};
   renderSavedProfiles();
+  // Limpiar historial (reiniciar)
+  window.history.pushState(null, '', '');
 }
 
 // ===== AUTO-RECONNECT =====
