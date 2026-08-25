@@ -43,7 +43,7 @@ body {
   border-radius:6px;
 }
 
-/* ===== ANIMACIONES MEJORADAS (más rápidas y notorias) ===== */
+/* ===== ANIMACIONES MEJORADAS ===== */
 .chan-card, .series-row, .ep-row, .cat-item, .top-tab, .profile-card {
   transition: transform 0.06s ease, border-color 0.1s ease, box-shadow 0.1s ease !important;
   will-change: transform;
@@ -71,7 +71,7 @@ body {
   transform: scale(1.12) !important;
 }
 
-/* ===== ANIMACIÓN DE ENTRADA (NUEVO) ===== */
+/* ===== ANIMACIÓN DE ENTRADA (PÁGINA) ===== */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -83,10 +83,52 @@ body {
   }
 }
 #setup {
-  animation: fadeInUp 12s ease-out both; /* antes 0.6s */
+  animation: fadeInUp 3s ease-out both; /* antes 12s */
 }
 #app.show {
-  animation: fadeInUp 12s ease-out both; /* antes 0.5s */
+  animation: fadeInUp 3s ease-out both; /* antes 12s */
+}
+
+/* ===== SPLASH LOGO ANIMADO ===== */
+.splash-logo {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 700;
+  color: #0A0D10;
+  box-shadow: 0 0 0 8px rgba(245,166,35,0.2);
+  animation: splashAnim 5s ease-out forwards; /* 5 segundos */
+  pointer-events: none;
+  font-family: var(--font);
+}
+@keyframes splashAnim {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2) rotate(-180deg);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1.2) rotate(0deg);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 /* ===== SETUP ===== */
@@ -758,6 +800,9 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 </style>
 </head>
 <body>
+
+<!-- ===== SPLASH LOGO ===== -->
+<div class="splash-logo">CM</div>
 
 <!-- ===== SETUP ===== -->
 <div id="setup">
