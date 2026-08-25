@@ -844,7 +844,7 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
       <input type="text" id="search-input" placeholder="Buscar canal…">
     </div>
     <div class="top-tabs" id="top-tabs"></div>
-    <!-- Mostramos el usuario -->
+    <!-- Mostramos el usuario y su fecha de vencimiento -->
     <div class="conn-name" id="conn-name"></div>
     <button class="icon-btn" id="my-lists-btn">📋</button>
     <button class="icon-btn" id="disconnect-btn">⏻</button>
@@ -1015,8 +1015,30 @@ async function xtreamApi(base, user, pass, action, extra){
   return res.json(); 
 }
 
+// ===== NUEVA FUNCIÓN useProfile (solo para xtream) =====
+async function useProfile(id){
+  const p = loadProfiles().find(x => x.id === id);
+  if(!p) return;
+  // Solo soportamos modo xtream en esta versión
+  if(p.mode === 'xtream' && p.xtream) {
+    // Usar el servidor guardado, no el primero por defecto
+    await connectXtream({ server: p.xtream.server, user: p.xtream.user, pass: p.xtream.pass, name: p.name });
+  } else {
+    // Si es m3u u otro, no hacemos nada o mostramos error
+    alert('Esta versión solo soporta cuentas Xtream.');
+  }
+}
+
 async function connectXtream(opts){
   opts = opts || {};
+  // Si se proporciona un servidor específico, usarlo, sino el primero de la lista
+  let base = opts.server || SERVIDORES[0];
+  // Validar que el servidor esté en la lista permitida
+  if(!SERVIDORES.includes(base)){
+    $('#x-error').textContent = 'Servidor no autorizado.';
+    $('#x-error').style.display = 'block';
+    return false;
+  }
   const user = opts.user !== undefined ? opts.user : $('#x-user').value.trim();
   const pass = opts.pass !== undefined ? opts.pass : $('#x-pass').value;
   const customName = opts.name !== undefined ? opts.name : undefined;
@@ -1030,30 +1052,46 @@ async function connectXtream(opts){
   let serversToTry = opts.server ? [opts.server] : SERVIDORES;
   
   let lastError = null;
-  for (let base of serversToTry) {
+  for (let baseTry of serversToTry) {
     try {
-      const auth = await xtreamApi(base, user, pass);
+      const auth = await xtreamApi(baseTry, user, pass);
       if(auth && auth.user_info && auth.user_info.auth === 1) {
         // Servidor válido, continuar con la carga
-        const liveCats = await xtreamApi(base, user, pass, 'get_live_categories').catch(()=>[]);
-        const liveStreams = await xtreamApi(base, user, pass, 'get_live_streams').catch(()=>[]);
-        const vodCats = await xtreamApi(base, user, pass, 'get_vod_categories').catch(()=>[]);
-        const vodStreams = await xtreamApi(base, user, pass, 'get_vod_streams').catch(()=>[]);
-        const seriesCats = await xtreamApi(base, user, pass, 'get_series_categories').catch(()=>[]);
-        const seriesList = await xtreamApi(base, user, pass, 'get_series').catch(()=>[]);
+        const liveCats = await xtreamApi(baseTry, user, pass, 'get_live_categories').catch(()=>[]);
+        const liveStreams = await xtreamApi(baseTry, user, pass, 'get_live_streams').catch(()=>[]);
+        const vodCats = await xtreamApi(baseTry, user, pass, 'get_vod_categories').catch(()=>[]);
+        const vodStreams = await xtreamApi(baseTry, user, pass, 'get_vod_streams').catch(()=>[]);
+        const seriesCats = await xtreamApi(baseTry, user, pass, 'get_series_categories').catch(()=>[]);
+        const seriesList = await xtreamApi(baseTry, user, pass, 'get_series').catch(()=>[]);
 
         const catNameById = {}; liveCats.forEach(c=> catNameById[c.category_id] = c.category_name);
-        const channels = liveStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: catNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${base}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.m3u8` }));
+        const channels = liveStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: catNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${baseTry}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.m3u8` }));
 
         const vodCatNameById = {}; vodCats.forEach(c=> vodCatNameById[c.category_id] = c.category_name);
-        const vod = vodStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: vodCatNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${base}/movie/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.${s.container_extension || 'mp4'}` }));
+        const vod = vodStreams.map(s=>({ name: s.name, logo: s.stream_icon || '', group: vodCatNameById[s.category_id] || 'General', catId: s.category_id, streamId: s.stream_id, url: `${baseTry}/movie/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${s.stream_id}.${s.container_extension || 'mp4'}` }));
 
         const seriesCatNameById = {}; seriesCats.forEach(c=> seriesCatNameById[c.category_id] = c.category_name);
         const series = seriesList.map(s=>({ name: s.name, logo: s.cover || '', group: seriesCatNameById[s.category_id] || 'General', catId: s.category_id, seriesId: s.series_id }));
 
         state.mode = 'xtream';
-        state.xtream = { base, user, pass };
-        state.connName = user; // Mostramos el usuario
+        state.xtream = { base: baseTry, user, pass };
+        
+        // ----- OBTENER FECHA DE VENCIMIENTO (más robusto) -----
+        const userInfo = auth.user_info;
+        let expDateRaw = null;
+        if (userInfo.exp_date) expDateRaw = userInfo.exp_date;
+        else if (userInfo.expiration_date) expDateRaw = userInfo.expiration_date;
+        else if (userInfo.expire_date) expDateRaw = userInfo.expire_date;
+        else if (userInfo.expiry_date) expDateRaw = userInfo.expiry_date;
+        
+        let formattedDate = 'Ilimitado';
+        if (expDateRaw && parseInt(expDateRaw) > 0) {
+          const d = new Date(parseInt(expDateRaw) * 1000);
+          formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+        state.connName = user + ' | ' + formattedDate;
+        // ---------------------------------------------------------
+
         state.channels = channels;
         state.categories = buildCategoriesFromChannels(channels);
         state.vod = vod;
@@ -1061,7 +1099,7 @@ async function connectXtream(opts){
         state.series = series;
         state.seriesCategories = buildCategoriesFromChannels(series);
         loading.style.display = 'none';
-        upsertProfile({ mode: 'xtream', xtream: { server: base, user, pass } }, customName);
+        upsertProfile({ mode: 'xtream', xtream: { server: baseTry, user, pass } }, customName);
         launchApp();
         return true;
       }
