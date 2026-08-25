@@ -3,5 +3,8 @@
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:statusBarColor">#0A0D10</item>
         <item name="android:navigationBarColor">#0A0D10</item>
+        <item name="android:colorPrimary">#FFB020</item>
+        <item name="android:colorPrimaryDark">#0A0D10</item>
+        <item name="android:colorAccent">#FFB020</item>
     </style>
 </resources>
