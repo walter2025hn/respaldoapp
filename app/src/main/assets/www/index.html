@@ -1336,33 +1336,74 @@ function playStream(url, title){
   if(isM3U8 && window.Hls && Hls.isSupported()){
     status.textContent = 'Conectando…';
     
-    // ----- CONFIGURACIÓN MEJORADA DE HLS PARA EVITAR PARONES -----
+    // ----- CONFIGURACIÓN MEJORADA DE HLS CON RECUPERACIÓN AUTOMÁTICA -----
     const hls = new Hls({
-      maxBufferLength: 60,               // Aumenta el buffer máximo
-      liveDurationInfinity: true,        // Para streams en vivo
-      liveSyncDurationCount: 3,          // Sincronización en vivo
-      backbufferLength: 30,              // Libera buffer antiguo
-      enableWorker: true,                // Usa worker para mejor rendimiento
-      lowLatencyMode: false,             // Prioriza estabilidad sobre latencia
-      autoLevelCapping: -1,              // Usa el mejor nivel disponible
-      maxBufferSize: 60 * 1024 * 1024    // 60MB de buffer
+      maxBufferLength: 60,
+      liveDurationInfinity: true,
+      liveSyncDurationCount: 3,
+      backbufferLength: 30,
+      enableWorker: true,
+      lowLatencyMode: false,
+      autoLevelCapping: -1,
+      maxBufferSize: 60 * 1024 * 1024,
+      // NUEVAS OPCIONES PARA RECUPERAR ERRORES
+      recoverAttempts: 5,                 // Intentos de recuperación
+      manifestLoadTimeout: 30000,        // 30 segundos para cargar manifiesto
+      levelLoadingTimeout: 30000,        // 30 segundos para cargar niveles
+      startLevel: -1                     // Mejor nivel automático
     });
     // ----------------------------------------------------------
     
     state.hls = hls;
     hls.loadSource(url);
     hls.attachMedia(video);
+    
+    // Evento cuando el manifiesto se ha parseado correctamente
     hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
       status.textContent = 'Reproduciendo en vivo';
       video.play().catch(()=>{});
     });
-    hls.on(Hls.Events.ERROR, (evt,data)=>{
-      if(data.fatal){
-        status.classList.add('err');
-        status.textContent = 'Error de reproducción';
-        extBtn.classList.add('show');
+    
+    // Manejo de errores mejorado
+    hls.on(Hls.Events.ERROR, (evt, data) => {
+      if (data.fatal) {
+        // Si el error es fatal, intentamos recuperar automáticamente
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          status.textContent = 'Recuperando error de medios...';
+          hls.recoverMediaError();
+        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          status.textContent = 'Recuperando error de red...';
+          hls.recoverMediaError(); // También funciona para red en algunos casos
+        } else {
+          // Si no podemos recuperar, mostramos error
+          status.classList.add('err');
+          status.textContent = 'Error de reproducción';
+          extBtn.classList.add('show');
+        }
+      } else {
+        // Errores no fatales se ignoran para que HLS intente recuperar
+        // console.log('Error no fatal:', data);
       }
     });
+    
+    // Si el video falla, intentar recargar una vez
+    video.addEventListener('error', function onVideoError() {
+      // Evitar múltiples ejecuciones
+      if (this._reloading) return;
+      this._reloading = true;
+      status.textContent = 'Reintentando...';
+      setTimeout(() => {
+        // Si el stream no se ha recuperado, recargar el HLS
+        if (state.hls) {
+          state.hls.loadSource(url);
+          state.hls.attachMedia(video);
+        }
+        this._reloading = false;
+      }, 3000);
+      // Eliminamos el listener para evitar bucles
+      this.removeEventListener('error', onVideoError);
+    }, {once: true});
+    
   } else if(video.canPlayType('application/vnd.apple.mpegurl') || video.canPlayType('video/mp4')){
     status.textContent = 'Conectando…';
     video.src = url;
