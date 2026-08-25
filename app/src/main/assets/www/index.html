@@ -546,7 +546,7 @@ body {
   height:100%;
   object-fit:cover;
 }
-.chan-card.poster .chan-logo-fallback {
+.chan-card.poster .chan-logo-wrap .chan-logo-fallback {
   position:absolute;
   inset:0;
   display:flex;
@@ -555,9 +555,12 @@ body {
   font-size:28px;
   font-weight:700;
 }
+/* Nombre de la película dentro del poster (superpuesto) */
 .chan-card.poster .chan-name {
   position:absolute;
-  left:0; right:0; bottom:0;
+  left:0;
+  right:0;
+  bottom:0;
   padding:24px 10px 10px;
   background:linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5) 60%, transparent);
   font-size:13px;
@@ -566,6 +569,9 @@ body {
   -webkit-line-clamp:2;
   -webkit-box-orient:vertical;
   overflow:hidden;
+  margin:0;
+  line-height:1.4;
+  pointer-events:none;
 }
 .chan-card.poster .chan-meta { display:none; }
 
@@ -1295,7 +1301,18 @@ function renderMain(){
   }
   const isPosterView = (state.activeType === 'vod' || state.activeType === 'series');
   html += `<div class="channel-grid${isPosterView ? ' poster-grid' : ''}">`;
-  visible.forEach((c, idx)=>{ html += `<div class="chan-card${isPosterView ? ' poster' : ''}" data-idx="${idx}"><div class="chan-logo-wrap">${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" onerror="this.parentElement.innerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}</div><div class="chan-name">${escapeHtml(c.name)}</div><div class="chan-meta">${String(idx+1).padStart(3,'0')}</div></div>`; });
+  visible.forEach((c, idx)=>{
+    // Para posters, el nombre se pone DENTRO del logo-wrap para que quede superpuesto
+    const posterNameHtml = isPosterView ? `<div class="chan-name">${escapeHtml(c.name)}</div>` : '';
+    html += `<div class="chan-card${isPosterView ? ' poster' : ''}" data-idx="${idx}">
+      <div class="chan-logo-wrap">
+        ${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" onerror="this.parentElement.innerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}
+        ${posterNameHtml}
+      </div>
+      ${!isPosterView ? `<div class="chan-name">${escapeHtml(c.name)}</div>` : ''}
+      <div class="chan-meta">${String(idx+1).padStart(3,'0')}</div>
+    </div>`;
+  });
   html += `</div>`;
   if(hasMore) html += `<div style="text-align:center;margin-top:18px;"><button class="btn-ghost" id="load-more-btn">Cargar más (${limit} de ${data.length})</button></div>`;
   main.innerHTML = html;
