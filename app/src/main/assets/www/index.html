@@ -35,11 +35,38 @@ body {
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-thumb { background:var(--border-color); border-radius:4px; }
 
+/* ===== FOCUS PARA TV (mando) ===== */
 :focus { outline:none; }
 *:focus-visible {
-  outline:2px solid var(--accent);
+  outline:3px solid var(--accent) !important;
   outline-offset:2px;
   border-radius:6px;
+}
+
+/* ===== ANIMACIONES MÁS RÁPIDAS ===== */
+.chan-card, .series-row, .ep-row, .cat-item, .top-tab, .profile-card {
+  transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease !important;
+}
+.chan-card:hover, .chan-card:focus-visible {
+  transform: scale(1.05) translateY(-2px) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 8px 24px rgba(245,166,35,0.25) !important;
+  transition: transform 0.08s ease, border-color 0.1s ease !important;
+}
+.series-row:hover, .series-row:focus-visible {
+  transform: scale(1.02) !important;
+  border-color: var(--accent) !important;
+}
+.chan-card.poster:hover, .chan-card.poster:focus-visible {
+  transform: scale(1.06) !important;
+  box-shadow: 0 12px 32px rgba(245,166,35,0.3) !important;
+}
+.cat-item:hover, .cat-item:focus-visible {
+  transform: translateX(4px) !important;
+  transition: transform 0.08s ease !important;
+}
+.top-tab:hover, .top-tab:focus-visible {
+  transform: scale(1.04) !important;
 }
 
 /* ===== SETUP ===== */
@@ -286,10 +313,12 @@ body {
   padding:6px 14px;
   border-radius:18px;
   cursor:pointer;
-  transition:background 0.2s, color 0.2s;
+  transition:background 0.15s, color 0.15s, transform 0.08s;
 }
 .top-tab.active { background:var(--accent-bg); color:var(--accent); }
 .top-tab:hover:not(.active) { color:var(--text-primary); }
+
+/* ===== OCULTO: servidor, mostramos usuario ===== */
 .conn-name {
   font-size:11px;
   color:var(--text-muted);
@@ -300,6 +329,7 @@ body {
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+
 .icon-btn {
   background:none;
   border:1px solid var(--border-color);
@@ -311,9 +341,10 @@ body {
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:border-color 0.2s, color 0.2s;
+  transition:border-color 0.15s, color 0.15s, transform 0.08s;
 }
 .icon-btn:hover { border-color:var(--text-muted); color:var(--text-primary); }
+.icon-btn:focus-visible { transform:scale(1.1); }
 
 .mobile-type-tabs {
   display:none;
@@ -327,6 +358,7 @@ body {
 }
 .mobile-type-tabs .top-tab { flex-shrink:0; }
 
+/* ===== SIDEBAR ===== */
 .sidebar {
   grid-column:1;
   grid-row:3;
@@ -351,7 +383,7 @@ body {
   font-size:13px;
   color:var(--text-secondary);
   border-left:2px solid transparent;
-  transition:color 0.15s, background 0.15s;
+  transition:color 0.12s, background 0.12s, transform 0.08s;
 }
 .cat-item:hover { color:var(--text-primary); background:rgba(255,255,255,0.02); }
 .cat-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--accent-bg); }
@@ -362,6 +394,7 @@ body {
   grid-row:3;
   overflow-y:auto;
   padding:18px 22px 40px;
+  scroll-behavior: smooth;
 }
 .grid-header {
   display:flex;
@@ -372,6 +405,7 @@ body {
 .grid-header h2 { font-size:18px; font-weight:600; }
 .grid-count { font-size:12px; color:var(--text-muted); }
 
+/* ===== GRID CON ANIMACIONES RÁPIDAS ===== */
 .channel-grid {
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
@@ -387,9 +421,15 @@ body {
   border-radius:var(--radius);
   padding:12px;
   cursor:pointer;
-  transition:border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  transition:transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  will-change: transform;
 }
-.chan-card:hover { border-color:var(--accent-dim); transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,0.4); }
+.chan-card:focus-visible {
+  transform: scale(1.05) translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(245,166,35,0.25);
+  outline: none;
+}
 .chan-card.playing { border-color:var(--accent); background:var(--accent-bg); }
 .chan-logo-wrap {
   height:64px;
@@ -425,6 +465,12 @@ body {
   border-radius:var(--radius);
   overflow:hidden;
   position:relative;
+  transition:transform 0.08s ease, box-shadow 0.12s ease;
+}
+.chan-card.poster:focus-visible {
+  transform: scale(1.06);
+  box-shadow: 0 12px 32px rgba(245,166,35,0.3);
+  outline: none;
 }
 .chan-card.poster .chan-logo-wrap {
   height:0;
@@ -462,6 +508,7 @@ body {
 }
 .chan-card.poster .chan-meta { display:none; }
 
+/* ===== SERIES ===== */
 .series-list { display:flex; flex-direction:column; gap:8px; }
 .series-row {
   display:flex;
@@ -472,9 +519,13 @@ body {
   border-radius:var(--radius);
   padding:10px 14px;
   cursor:pointer;
-  transition:border-color 0.2s;
+  transition:border-color 0.12s, transform 0.08s;
 }
-.series-row:hover { border-color:var(--accent-dim); }
+.series-row:focus-visible {
+  transform: scale(1.02);
+  border-color: var(--accent);
+  outline: none;
+}
 .series-row img {
   width:48px; height:68px;
   object-fit:cover;
@@ -495,8 +546,13 @@ body {
   border-radius:8px;
   cursor:pointer;
   font-size:13px;
+  transition:border-color 0.12s, transform 0.08s;
 }
-.ep-row:hover { border-color:var(--accent-dim); }
+.ep-row:focus-visible {
+  transform: scale(1.02);
+  border-color: var(--accent);
+  outline: none;
+}
 .back-link {
   color:var(--accent);
   font-size:13px;
@@ -519,6 +575,7 @@ body {
 }
 .empty-state .big { font-size:14px; color:var(--text-secondary); }
 
+/* ===== MODAL ===== */
 #my-lists-modal {
   display:none;
   position:fixed;
@@ -565,9 +622,12 @@ body {
   cursor:pointer;
   width:32px; height:32px;
   border-radius:8px;
+  transition:background 0.12s;
 }
 .close-x:hover { background:var(--bg-card); color:var(--text-primary); }
+.close-x:focus-visible { outline:3px solid var(--accent); }
 
+/* ===== PLAYER OVERLAY ===== */
 #player-overlay {
   display:none;
   position:fixed;
@@ -725,6 +785,7 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
       <input type="text" id="search-input" placeholder="Buscar canal…">
     </div>
     <div class="top-tabs" id="top-tabs"></div>
+    <!-- MOSTRAMOS EL USUARIO EN VEZ DEL SERVIDOR -->
     <div class="conn-name" id="conn-name"></div>
     <button class="icon-btn" id="my-lists-btn">📋</button>
     <button class="icon-btn" id="disconnect-btn">⏻</button>
@@ -751,11 +812,11 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   <div class="player-box">
     <div class="player-topline">
       <div class="player-title"><div class="live-dot"></div><span id="player-title-text">—</span></div>
-      <button class="close-x" id="player-close">✕</button>
+      <button class="close-x" id="player-close" tabindex="0">✕</button>
     </div>
     <video id="video" controls autoplay playsinline></video>
     <div style="padding:0 16px;">
-      <button class="ext-player-btn" id="ext-player-btn">📺 Abrir en reproductor externo</button>
+      <button class="ext-player-btn" id="ext-player-btn" tabindex="0">📺 Abrir en reproductor externo</button>
     </div>
     <div class="player-status" id="player-status">Iniciando…</div>
   </div>
@@ -803,13 +864,13 @@ function profileKeyOf(p){
   return 'xtream:' + p.xtream.server + ':' + p.xtream.user;
 }
 function defaultProfileName(p){
-  return p.xtream.server.replace(/^https?:\/\//,'');
+  return p.xtream.user; // MOSTRAMOS EL USUARIO
 }
 function upsertProfile(profile, customName){
   const list = loadProfiles();
   const key = profileKeyOf(profile);
   const existing = list.find(p => profileKeyOf(p) === key);
-  const name = customName || (existing && existing.name) || defaultProfileName(profile);
+  const name = customName || (existing && existing.name) || profile.xtream.user; // USUARIO
   const entry = Object.assign({}, profile, { name, lastUsed: Date.now(), id: (existing && existing.id) || (Date.now()+''+Math.random().toString(36).slice(2,7)) });
   saveProfiles(list.filter(p => profileKeyOf(p) !== key).concat(entry));
 }
@@ -820,8 +881,8 @@ function profileCardsHtml(list, currentKey){
   if(!list.length) return '';
   let html = '';
   list.forEach(p=>{
-    const sub = p.xtream.server.replace(/^https?:\/\//,'');
-    const icon = '🛰️';
+    const sub = p.xtream.user; // MOSTRAMOS USUARIO
+    const icon = '👤';
     const isCurrent = currentKey && profileKeyOf(p) === currentKey;
     html += `<div class="profile-card" data-id="${escapeAttr(p.id)}">
       <div class="profile-icon">${icon}</div>
@@ -874,6 +935,8 @@ $('#sidebar-scrim').addEventListener('click', ()=>{ $('#sidebar').classList.remo
 $('#x-load-btn').addEventListener('click', ()=> connectXtream());
 $('#disconnect-btn').addEventListener('click', disconnectApp);
 $('#player-close').addEventListener('click', closePlayer);
+// Soporte para mando TV en botón cerrar
+$('#player-close').addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closePlayer(); } });
 
 // ===== HELPERS =====
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -896,9 +959,7 @@ async function xtreamApi(base, user, pass, action, extra){
 
 async function connectXtream(opts){
   opts = opts || {};
-  // Si no se pasa servidor, usar el primero de la lista (oculto)
   let base = opts.server || SERVIDORES[0];
-  // Validar que el servidor esté en la lista permitida
   if(!SERVIDORES.includes(base)){
     $('#x-error').textContent = 'Servidor no autorizado.';
     $('#x-error').style.display = 'block';
@@ -933,7 +994,8 @@ async function connectXtream(opts){
 
     state.mode = 'xtream';
     state.xtream = { base, user, pass };
-    state.connName = customName || base.replace(/^https?:\/\//,'');
+    // MOSTRAMOS EL USUARIO EN LA BARRA
+    state.connName = user;
     state.channels = channels;
     state.categories = buildCategoriesFromChannels(channels);
     state.vod = vod;
@@ -962,7 +1024,7 @@ function buildCategoriesFromChannels(channels){
 function launchApp(){
   $('#setup').style.display = 'none';
   $('#app').classList.add('show');
-  $('#conn-name').textContent = state.connName;
+  $('#conn-name').textContent = state.connName; // AHORA MUESTRA USUARIO
   const tabsWrap = $('#top-tabs');
   const mobileTabsWrap = $('#mobile-type-tabs');
   tabsWrap.innerHTML = ''; mobileTabsWrap.innerHTML = '';
@@ -1119,7 +1181,6 @@ async function tryAutoReconnect(){
   if(!saved) return;
   const autoBox = $('#auto-reconnect');
   autoBox.style.display = 'flex';
-  // Verificar que el servidor guardado esté en la lista permitida
   if(!SERVIDORES.includes(saved.xtream.server)){
     autoBox.style.display = 'none';
     return;
