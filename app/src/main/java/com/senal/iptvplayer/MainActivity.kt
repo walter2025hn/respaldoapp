@@ -197,6 +197,9 @@ class MainActivity : AppCompatActivity() {
         playerOverlay.visibility = View.VISIBLE
         loadingSpinner.visibility = View.VISIBLE
 
+        // Deshabilitar el WebView para que no capture teclas
+        webView.isEnabled = false
+
         applyAspectMode("fit")
 
         val exoPlayer = nativePlayer ?: ExoPlayer.Builder(this).build().also {
@@ -231,7 +234,8 @@ class MainActivity : AppCompatActivity() {
         nativePlayer?.pause()
         nativePlayer?.stop()
         playerOverlay.visibility = View.GONE
-        // Devolver el foco al WebView
+        // Reactivar el WebView y devolverle el foco
+        webView.isEnabled = true
         webView.requestFocus()
     }
 
