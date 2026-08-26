@@ -1172,9 +1172,7 @@ function handleBackPress() {
     backPressTimer = null;
     // Segundo toque: salir
     alert('Saliendo de la aplicación...');
-    // Intentar cerrar la ventana
     if (window.close) window.close();
-    // Si no funciona, redirigir a una página en blanco
     window.location.href = 'about:blank';
     return;
   }
@@ -1191,7 +1189,6 @@ function handleBackPress() {
 window.addEventListener('popstate', function(event) {
   const stateData = event.state;
   if (stateData) {
-    // Restaurar vista interna
     if (stateData.activeType) state.activeType = stateData.activeType;
     if (stateData.activeCategory) state.activeCategory = stateData.activeCategory;
     if (stateData.viewingSeries) {
@@ -1205,8 +1202,76 @@ window.addEventListener('popstate', function(event) {
     renderMain();
     closeSidebar();
   } else {
-    // No hay estado → estamos en la raíz → doble toque para salir
     handleBackPress();
+  }
+});
+
+// ===== MANEJO DE TODOS LOS BOTONES DEL MANDO =====
+document.addEventListener('keydown', function(e) {
+  const key = e.key;
+  const keyCode = e.keyCode || e.which;
+  
+  // Si hay un overlay de reproducción HTML5 visible, controlar el video
+  const playerOverlay = document.getElementById('player-overlay');
+  const video = document.getElementById('video');
+  if (playerOverlay && playerOverlay.classList.contains('show') && video) {
+    // Tecla OK (Enter) o Play/Pause -> toggle play/pause
+    if (key === 'Enter' || keyCode === 13 || key === 'MediaPlayPause' || keyCode === 85) {
+      e.preventDefault();
+      if (video.paused) video.play(); else video.pause();
+      return;
+    }
+    // Teclas de avance/retroceso (flechas derecha/izquierda o media next/prev)
+    if (key === 'ArrowRight' || keyCode === 39 || key === 'MediaNextTrack' || keyCode === 87) {
+      e.preventDefault();
+      video.currentTime += 10;
+      return;
+    }
+    if (key === 'ArrowLeft' || keyCode === 37 || key === 'MediaPreviousTrack' || keyCode === 88) {
+      e.preventDefault();
+      video.currentTime -= 10;
+      return;
+    }
+    // Tecla de volumen no la interceptamos, la dejamos al sistema.
+    // Tecla de cerrar (Esc o Back) ya la maneja el botón de cerrar.
+    if (key === 'Escape' || keyCode === 27 || key === 'Back' || keyCode === 4) {
+      // Si el overlay de reproducción está visible, el botón back lo cierra.
+      // Pero ya tenemos el evento popstate que maneja el back.
+      // Dejamos que el popstate lo maneje.
+      return;
+    }
+    // Tecla Menu: cerrar el reproductor
+    if (key === 'Menu' || keyCode === 82) {
+      e.preventDefault();
+      closePlayer();
+      return;
+    }
+  }
+  
+  // Si el modal de listas está abierto, el back lo cierra (ya manejado por el modal)
+  // Si no, manejar navegación general.
+  
+  // Tecla Menu global -> abrir modal de listas (si no está visible ya)
+  if ((key === 'Menu' || keyCode === 82) && !$('#my-lists-modal').classList.contains('show')) {
+    e.preventDefault();
+    openMyListsModal();
+    return;
+  }
+  
+  // Tecla de búsqueda (si existe) enfocar el search
+  if (key === 'Search' || keyCode === 84) {
+    e.preventDefault();
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.focus();
+    return;
+  }
+  
+  // Otras teclas de navegación las dejamos que el foco natural las maneje.
+  // Pero si no hay foco en ningún elemento interactivo, forzar foco en el primer elemento.
+  if (document.activeElement === document.body) {
+    // Si la app está visible, enfocar la primera categoría o el primer elemento
+    const firstFocusable = document.querySelector('[tabindex="0"]:not([tabindex="-1"])');
+    if (firstFocusable) firstFocusable.focus();
   }
 });
 
@@ -1227,7 +1292,7 @@ function launchApp(){
     renderSidebar(); 
     renderMain(); 
     closeSidebar();
-    pushHistoryState(); // Guardar historial al cambiar de pestaña
+    pushHistoryState();
   };
   [['live','TV en vivo'], ['vod','Películas'], ['series','Series']].forEach(([key,label])=>{
     [tabsWrap, mobileTabsWrap].forEach(container=>{
@@ -1242,8 +1307,12 @@ function launchApp(){
   renderSidebar();
   renderMain();
   $('#search-input').oninput = ()=>{ state.renderLimit = 60; renderMain(); };
-  // Guardar estado inicial
   pushHistoryState();
+  // Enfocar el primer elemento interactivo (por ejemplo, el primer tab o categoría)
+  setTimeout(() => {
+    const firstFocusable = document.querySelector('.top-tab') || document.querySelector('.cat-item');
+    if (firstFocusable) firstFocusable.focus();
+  }, 100);
 }
 function renderTabs(){ $$('.top-tab').forEach(b=> b.classList.toggle('active', b.dataset.key === state.activeType)); }
 function currentDataset(){
@@ -1273,7 +1342,7 @@ function renderSidebar(){
     renderSidebar(); 
     renderMain(); 
     closeSidebar();
-    pushHistoryState(); // Guardar historial al cambiar categoría
+    pushHistoryState();
   }); });
 }
 function renderMain(){
@@ -1306,7 +1375,6 @@ function renderMain(){
   const isPosterView = (state.activeType === 'vod' || state.activeType === 'series');
   html += `<div class="channel-grid${isPosterView ? ' poster-grid' : ''}">`;
   visible.forEach((c, idx)=>{
-    // Para posters, el nombre se pone DENTRO del logo-wrap para que quede superpuesto
     const posterNameHtml = isPosterView ? `<div class="chan-name">${escapeHtml(c.name)}</div>` : '';
     html += `<div class="chan-card${isPosterView ? ' poster' : ''}" data-idx="${idx}">
       <div class="chan-logo-wrap">
@@ -1364,7 +1432,6 @@ function playStream(url, title){
   if(isM3U8 && window.Hls && Hls.isSupported()){
     status.textContent = 'Conectando…';
     
-    // ----- CONFIGURACIÓN MEJORADA DE HLS CON RECUPERACIÓN AUTOMÁTICA DE MANIFIESTO -----
     let reloadAttempts = 0;
     const MAX_RELOAD_ATTEMPTS = 3;
     
@@ -1392,27 +1459,22 @@ function playStream(url, title){
       video.play().catch(()=>{});
     });
     
-    // Manejo de errores mejorado con reintentos de carga de manifiesto
     hls.on(Hls.Events.ERROR, (evt, data) => {
-      // Caso especial: "Source error" suele ser MANIFEST_LOAD_ERROR o LEVEL_LOAD_ERROR
       if (data.fatal) {
-        // Si es un error de red o de carga, intentar recargar el manifiesto
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR ||
             data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
             data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR) {
           if (reloadAttempts < MAX_RELOAD_ATTEMPTS) {
             reloadAttempts++;
             status.textContent = `Reintentando (${reloadAttempts}/${MAX_RELOAD_ATTEMPTS})...`;
-            // Recargar el manifiesto después de 3 segundos
             setTimeout(() => {
               if (state.hls) {
                 state.hls.loadSource(url);
                 state.hls.attachMedia(video);
               }
             }, 3000);
-            return; // No mostrar error, estamos reintentando
+            return;
           } else {
-            // Después de 3 intentos, mostrar error
             status.classList.add('err');
             status.textContent = 'Error: No se pudo cargar el stream (fuente inaccesible).';
             extBtn.classList.add('show');
@@ -1423,17 +1485,12 @@ function playStream(url, title){
           hls.recoverMediaError();
           return;
         }
-        // Otros errores fatales
         status.classList.add('err');
         status.textContent = 'Error de reproducción';
         extBtn.classList.add('show');
-      } else {
-        // Errores no fatales, ignorar (HLS intentará recuperarse)
-        // console.log('Error no fatal:', data);
       }
     });
     
-    // Si el video falla, intentar recargar una vez
     video.addEventListener('error', function onVideoError() {
       if (this._reloading) return;
       this._reloading = true;
@@ -1475,7 +1532,6 @@ function disconnectApp(){
   $('#x-user').value = ''; $('#x-pass').value = '';
   state = {mode:'xtream', connName:'', channels:[], categories:[], activeCategory:'all', activeType:'live', xtream:null, vod:[], vodCategories:[], series:[], seriesCategories:[], seriesEpisodesCache:{}, viewingSeries:null, hls:null, renderLimit:60};
   renderSavedProfiles();
-  // Limpiar historial (reiniciar)
   window.history.pushState(null, '', '');
 }
 
