@@ -1682,12 +1682,12 @@ function setupKeyListeners() {
     const key = e.key;
     const keyCode = e.keyCode || e.which;
     const type = e.type;
-    if (type === 'keypress') return;
+    if (type !== 'keydown') return;
     
     const isBackKey = (
       key === 'Escape' || key === 'Back' || key === 'GoBack' || key === 'BrowserBack' ||
       key === 'Exit' || key === 'XF86Back' ||
-      keyCode === 27 || keyCode === 4 || keyCode === 8 ||
+      keyCode === 27 || keyCode === 4 || keyCode === 8 || keyCode === 111 ||
       keyCode === 166 || keyCode === 10009 || keyCode === 461
     );
     
@@ -1786,10 +1786,7 @@ function setupKeyListeners() {
     }
   };
   
-  window.addEventListener('keydown', handler);
-  window.addEventListener('keyup', handler);
   document.addEventListener('keydown', handler);
-  document.addEventListener('keyup', handler);
   setInterval(ensureFocus, 2000);
 }
 
