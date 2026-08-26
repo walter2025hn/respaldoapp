@@ -540,6 +540,36 @@ body {
   pointer-events:none;
 }
 .chan-card.poster .chan-meta { display:none; }
+.fav-badge {
+  position:absolute;
+  top:8px;
+  right:8px;
+  z-index:6;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:none;
+  background:rgba(10,13,16,0.55);
+  backdrop-filter:blur(4px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:15px;
+  line-height:1;
+  color:#fff;
+  cursor:pointer;
+  transition:transform 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+.fav-badge:hover, .fav-badge:focus {
+  transform:scale(1.15);
+  background:rgba(245,166,35,0.85);
+  color:#0A0D10;
+  outline:none;
+}
+.fav-badge.active {
+  color:var(--accent);
+  background:rgba(245,166,35,0.25);
+}
 
 .series-list { display:flex; flex-direction:column; gap:8px; }
 .series-row {
@@ -2135,9 +2165,12 @@ function renderMain(){
   html += `<div class="channel-grid${isPosterView ? ' poster-grid' : ''}">`;
   visible.forEach((c, idx)=>{
     const posterNameHtml = isPosterView ? `<div class="chan-name">${escapeHtml(c.name)}</div>` : '';
+    const favActive = isPosterView && isFavorite({ id: c.id, type: c.type });
+    const favBadgeHtml = isPosterView ? `<button type="button" class="fav-badge${favActive ? ' active' : ''}" data-fav-id="${escapeAttr(c.id)}" data-fav-type="${escapeAttr(c.type)}" aria-label="Añadir a favoritos" tabindex="0">${favActive ? '⭐' : '☆'}</button>` : '';
     html += `<div class="chan-card${isPosterView ? ' poster' : ''}" data-idx="${idx}">
       <div class="chan-logo-wrap">
-        ${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" decoding="async" onerror="this.parentElement.innerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}
+        ${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" decoding="async" onerror="this.outerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}
+        ${favBadgeHtml}
         ${posterNameHtml}
       </div>
       ${!isPosterView ? `<div class="chan-name">${escapeHtml(c.name)}</div>` : ''}
@@ -2148,6 +2181,27 @@ function renderMain(){
   if(hasMore) html += `<div style="text-align:center;margin-top:18px;"><button class="btn-ghost" id="load-more-btn">Cargar más (${limit} de ${data.length})</button></div>`;
   main.innerHTML = html;
   $$('.chan-card').forEach(el=>{ makeActivatable(el, ()=>{ const c = visible[parseInt(el.dataset.idx)]; playStream(c.url, c.name, 0, c); }); });
+  $$('.fav-badge').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.favId;
+      const type = btn.dataset.favType;
+      const c = visible.find(x => x.id === id && x.type === type);
+      if(!c) return;
+      toggleFavorite({ id: c.id, type: c.type, title: c.name, url: c.url, logo: c.logo });
+      const nowFav = isFavorite({ id: c.id, type: c.type });
+      btn.classList.toggle('active', nowFav);
+      btn.textContent = nowFav ? '⭐' : '☆';
+    });
+    btn.addEventListener('keydown', (e)=>{
+      e.stopPropagation();
+      const kc = e.keyCode || e.which;
+      if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+        e.preventDefault();
+        btn.click();
+      }
+    });
+  });
   const moreBtn = $('#load-more-btn');
   if(moreBtn) moreBtn.addEventListener('click', ()=>{ state.renderLimit = limit + 60; renderMain(); });
   
@@ -2198,6 +2252,14 @@ const video = $('#video');
 const extBtn = $('#ext-player-btn');
 let continueUpdateInterval = null;
 
+function saveExactProgress() {
+  if (video.duration > 0 && video.currentTime > 0 && state.currentPlaybackItem) {
+    updateContinueWatching(state.currentPlaybackItem, video.currentTime, video.duration);
+  }
+}
+video.addEventListener('pause', saveExactProgress);
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'hidden') saveExactProgress(); });
+
 function openInExternalPlayer(url, title){
   if(window.AndroidBridge && typeof window.AndroidBridge.openExternal === 'function'){ window.AndroidBridge.openExternal(url, title); }
   else { window.open(url, '_blank'); }
@@ -2236,7 +2298,7 @@ function playStream(url, title, resumeTime = 0, item = null){
   extBtn.classList.remove('show');
   extBtn.onclick = ()=> openInExternalPlayer(url, title);
   if(state.hls){ state.hls.destroy(); state.hls = null; }
-  video.pause(); video.removeAttribute('src'); video.load();
+  video.pause(); video.removeAttribute('src'); video.preload = 'auto'; video.load();
   
   // Limpiar intervalo anterior
   if (continueUpdateInterval) {
@@ -2260,10 +2322,13 @@ function playStream(url, title, resumeTime = 0, item = null){
       backbufferLength: 20,
       recoverAttempts: 10,
       enableWorker: true,
-      lowLatencyMode: false,
+      lowLatencyMode: true,
       autoLevelCapping: -1,
-      manifestLoadTimeout: 10000,
-      levelLoadingTimeout: 10000,
+      capLevelToPlayerSize: true,
+      testBandwidth: false,
+      startFragPrefetch: true,
+      manifestLoadTimeout: 8000,
+      levelLoadingTimeout: 8000,
       fragLoadingTimeout: 8000,
       startLevel: -1
     });
@@ -2343,6 +2408,7 @@ function playStream(url, title, resumeTime = 0, item = null){
     
   } else if(video.canPlayType('application/vnd.apple.mpegurl') || video.canPlayType('video/mp4')){
     status.textContent = 'Conectando…';
+    video.preload = 'auto';
     video.src = url;
     video.addEventListener('loadedmetadata', ()=>{ 
       status.textContent = 'Reproduciendo'; 
