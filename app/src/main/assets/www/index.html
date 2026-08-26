@@ -1206,7 +1206,7 @@ window.addEventListener('popstate', function(event) {
   }
 });
 
-// ===== MANEJO DE TODOS LOS BOTONES DEL MANDO =====
+// ===== MANEJO DE TODOS LOS BOTONES DEL MANDO (con navegación mejorada) =====
 document.addEventListener('keydown', function(e) {
   const key = e.key;
   const keyCode = e.keyCode || e.which;
@@ -1266,14 +1266,54 @@ document.addEventListener('keydown', function(e) {
     return;
   }
   
-  // Otras teclas de navegación las dejamos que el foco natural las maneje.
-  // Pero si no hay foco en ningún elemento interactivo, forzar foco en el primer elemento.
+  // ===== NAVEGACIÓN CON FLECHAS ARRIBA/ABAJO (SOPORTE COMPLETO PARA TV) =====
+  // Códigos de tecla para D-pad en Android TV: 19=arriba, 20=abajo, 21=izquierda, 22=derecha
+  if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
+    e.preventDefault();
+    navigateFocus(-1);
+    return;
+  }
+  if (key === 'ArrowDown' || keyCode === 40 || keyCode === 20) {
+    e.preventDefault();
+    navigateFocus(1);
+    return;
+  }
+  // También para izquierda/derecha (por si acaso)
+  if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21) {
+    // La navegación horizontal la dejamos al comportamiento nativo o la manejamos si queremos.
+    // Por ahora, no la interceptamos para que el foco se mueva naturalmente (ya funciona).
+    // Podemos agregarla para consistencia, pero no es necesario.
+    // e.preventDefault(); navigateHorizontal(-1);
+  }
+  if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22) {
+    // Similar.
+  }
+  
+  // Si no hay foco en ningún elemento interactivo, forzar foco en el primer elemento.
   if (document.activeElement === document.body) {
-    // Si la app está visible, enfocar la primera categoría o el primer elemento
     const firstFocusable = document.querySelector('[tabindex="0"]:not([tabindex="-1"])');
     if (firstFocusable) firstFocusable.focus();
   }
 });
+
+// Función para navegar entre elementos con tabindex (orden DOM)
+function navigateFocus(direction) {
+  const focusables = Array.from(document.querySelectorAll('[tabindex="0"]:not([tabindex="-1"])'));
+  if (focusables.length === 0) return;
+  const currentIndex = focusables.indexOf(document.activeElement);
+  let nextIndex;
+  if (currentIndex === -1) {
+    // Si no hay foco, empezar por el primero o último según dirección
+    nextIndex = direction > 0 ? 0 : focusables.length - 1;
+  } else {
+    nextIndex = (currentIndex + direction + focusables.length) % focusables.length;
+  }
+  const target = focusables[nextIndex];
+  if (target) {
+    target.focus();
+    target.scrollIntoView({ block: 'center', behavior: 'auto' });
+  }
+}
 
 // ===== APP LAUNCH =====
 function launchApp(){
