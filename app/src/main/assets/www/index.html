@@ -35,12 +35,12 @@ body {
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-thumb { background:var(--border-color); border-radius:4px; }
 
-/* ===== FOCUS PARA TV ===== */
+/* ===== FOCUS PARA TV (más visible) ===== */
 :focus { outline:none; }
 *:focus {
-  outline:3px solid var(--accent) !important;
-  outline-offset:2px;
-  border-radius:6px;
+  outline:4px solid var(--accent) !important;
+  outline-offset:3px;
+  border-radius:8px;
 }
 
 /* ===== ANIMACIONES MEJORADAS (más rápidas) ===== */
@@ -454,7 +454,7 @@ body {
   grid-row:3;
   overflow-y:auto;
   padding:18px 22px 40px;
-  scroll-behavior: auto; /* Cambiado de smooth a auto para que el scroll sea instantáneo */
+  scroll-behavior: auto; /* Scroll instantáneo */
 }
 .grid-header {
   display:flex;
@@ -766,49 +766,39 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 }
 .sidebar-scrim.show { display:block; }
 
-@media (max-width:760px) {
-  #app { grid-template-columns:1fr; }
-  .hamburger {
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    width:34px; height:34px;
-    border:1px solid var(--border-color);
-    border-radius:8px;
-    background:none;
-    color:var(--text-primary);
-    font-size:18px;
-    cursor:pointer;
-  }
-  .topbar .brand h1 { font-size:14px; }
-  .search-wrap { max-width:none; }
-  .sidebar {
-    position:fixed;
-    left:-260px;
-    top:56px;
-    bottom:0;
-    width:240px;
-    z-index:40;
-    transition:left 0.2s;
-  }
-  .sidebar.open { left:0; }
-  .top-tabs { display:none; }
-  .mobile-type-tabs { display:flex; }
-  .conn-name { display:none; }
-  .channel-grid { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
-  .channel-grid.poster-grid { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:12px; }
+/* ===== OPTIMIZACIONES PARA TV BOX (Android 14) ===== */
+@media (min-width: 1200px) {
+  /* Tamaños de fuente y padding más grandes para pantallas grandes */
+  .chan-name { font-size: 14px; }
+  .cat-item { font-size: 15px; padding: 10px 20px; }
+  .top-tab { font-size: 14px; padding: 8px 20px; }
+  .conn-name { font-size: 13px; max-width: 180px; }
+  .sidebar { width: 260px; }
+  .main { padding: 24px 28px 50px; }
+  .grid-header h2 { font-size: 20px; }
+  .grid-count { font-size: 14px; }
+  .chan-card .chan-meta { font-size: 12px; }
+  .chan-card .chan-logo-wrap { height: 80px; }
+  .channel-grid { gap: 18px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .channel-grid.poster-grid { gap: 20px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .series-row .info .t { font-size: 16px; }
+  .series-row .info .g { font-size: 14px; }
+  .ep-row { font-size: 15px; padding: 12px 16px; }
+  .back-link { font-size: 15px; }
+  .btn { font-size: 16px; padding: 14px; }
+  .field input { font-size: 16px; padding: 12px 16px; }
+  .field label { font-size: 13px; }
 }
-@media (min-width:1400px) {
-  .channel-grid { grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:18px; }
-  .channel-grid.poster-grid { grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; }
-  .chan-name { font-size:14px; }
-  .cat-item { padding:10px 20px; font-size:14px; }
-  .top-tab { padding:8px 18px; font-size:13px; }
+
+@media (min-width: 1400px) {
+  .channel-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+  .channel-grid.poster-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; }
+  .chan-card .chan-logo-wrap { height: 96px; }
 }
-/* Ajuste extra para TV 4K (pantallas muy grandes) */
-@media (min-width:2000px) {
-  .channel-grid { grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:22px; }
-  .channel-grid.poster-grid { grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:24px; }
+
+@media (min-width: 2000px) {
+  .channel-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; }
+  .channel-grid.poster-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 28px; }
 }
 </style>
 </head>
@@ -1171,38 +1161,52 @@ function buildCategoriesFromChannels(channels){
   return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({id:name, name, count:map[name]}));
 }
 
-// ===== NAVEGACIÓN CON HISTORIAL (NUEVO) =====
-// Guarda el estado actual en el historial del navegador
-function pushHistoryState() {
-  const stateData = {
-    activeType: state.activeType,
-    activeCategory: state.activeCategory,
-    viewingSeries: state.viewingSeries ? state.viewingSeries.seriesId : null
-  };
-  window.history.pushState(stateData, '', '');
+// ===== NAVEGACIÓN CON HISTORIAL Y DOBLE TOQUE ATRÁS =====
+let backPressCount = 0;
+let backPressTimer = null;
+
+function handleBackPress() {
+  // Si hay un temporizador, lo cancelamos y contamos como segundo toque
+  if (backPressTimer) {
+    clearTimeout(backPressTimer);
+    backPressTimer = null;
+    // Segundo toque: salir
+    alert('Saliendo de la aplicación...');
+    // Intentar cerrar la ventana
+    if (window.close) window.close();
+    // Si no funciona, redirigir a una página en blanco
+    window.location.href = 'about:blank';
+    return;
+  }
+  // Primer toque
+  backPressCount++;
+  alert('Presiona atrás otra vez para salir');
+  backPressTimer = setTimeout(() => {
+    backPressCount = 0;
+    backPressTimer = null;
+  }, 2000);
 }
 
 // Restaura el estado desde el historial al hacer 'back' o 'forward'
 window.addEventListener('popstate', function(event) {
   const stateData = event.state;
   if (stateData) {
-    // Restaurar solo si hay un estado válido
+    // Restaurar vista interna
     if (stateData.activeType) state.activeType = stateData.activeType;
     if (stateData.activeCategory) state.activeCategory = stateData.activeCategory;
     if (stateData.viewingSeries) {
-      // Buscar la serie por su id
       const found = state.series.find(s => s.seriesId === stateData.viewingSeries);
       state.viewingSeries = found || null;
     } else {
       state.viewingSeries = null;
     }
-    // Re-renderizar la interfaz
     renderTabs();
     renderSidebar();
     renderMain();
     closeSidebar();
   } else {
-    // Si no hay estado (primer estado), no hacer nada
+    // No hay estado → estamos en la raíz → doble toque para salir
+    handleBackPress();
   }
 });
 
