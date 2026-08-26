@@ -792,6 +792,66 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   .channel-grid { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
   .channel-grid.poster-grid { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:12px; }
 }
+
+/* Estilo para el botón de calidad que se crea dinámicamente */
+.quality-btn {
+  position: absolute;
+  bottom: 80px;
+  right: 14px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  border: 1px solid var(--accent-dim);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 60;
+  font-weight: 600;
+  font-family: var(--font);
+}
+.quality-btn:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.quality-menu {
+  position: absolute;
+  bottom: 120px;
+  right: 14px;
+  background: rgba(10,13,16,0.95);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 0;
+  min-width: 120px;
+  z-index: 65;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+}
+.quality-menu.show {
+  display: flex;
+}
+.quality-menu button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.15s;
+}
+.quality-menu button:hover,
+.quality-menu button:focus {
+  background: var(--accent-bg);
+  color: var(--accent);
+  outline: none;
+}
+.quality-menu button.active-quality {
+  color: var(--accent);
+  background: rgba(245,166,35,0.1);
+}
 </style>
 </head>
 <body>
@@ -1421,6 +1481,165 @@ function navigateFocus(direction) {
   }
 }
 
+// ===== CONTROL DE CALIDAD (HLS) =====
+let qualityMenuOpen = false;
+let qualityBtn = null;
+let qualityMenu = null;
+
+function createQualityControl(hls, playerBox) {
+  // Eliminar controles previos si existen
+  if (qualityBtn) { qualityBtn.remove(); qualityBtn = null; }
+  if (qualityMenu) { qualityMenu.remove(); qualityMenu = null; }
+  qualityMenuOpen = false;
+
+  // Verificar si hay niveles
+  if (!hls.levels || hls.levels.length <= 1) {
+    // Si solo hay un nivel o ninguno, no mostramos el botón
+    return;
+  }
+
+  // Crear botón de calidad
+  const btn = document.createElement('button');
+  btn.className = 'quality-btn';
+  btn.textContent = '🎬 HD';
+  btn.setAttribute('tabindex', '0');
+  btn.setAttribute('role', 'button');
+  btn.setAttribute('aria-label', 'Cambiar calidad de video');
+  
+  // Crear menú de calidad
+  const menu = document.createElement('div');
+  menu.className = 'quality-menu';
+  menu.setAttribute('role', 'menu');
+  
+  // Añadir opciones de calidad
+  hls.levels.forEach((level, index) => {
+    const label = level.height ? `${level.height}p` : `Nivel ${index}`;
+    const isActive = hls.currentLevel === index;
+    const btnOpt = document.createElement('button');
+    btnOpt.textContent = label;
+    btnOpt.setAttribute('role', 'menuitem');
+    btnOpt.dataset.level = index;
+    if (isActive) btnOpt.classList.add('active-quality');
+    btnOpt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hls.currentLevel = index;
+      updateQualityLabel(btn, hls, index);
+      menu.classList.remove('show');
+      qualityMenuOpen = false;
+    });
+    // Soporte para mando (Enter)
+    btnOpt.addEventListener('keydown', (e) => {
+      const kc = e.keyCode || e.which;
+      if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = parseInt(e.target.dataset.level);
+        hls.currentLevel = idx;
+        updateQualityLabel(btn, hls, idx);
+        menu.classList.remove('show');
+        qualityMenuOpen = false;
+      }
+    });
+    menu.appendChild(btnOpt);
+  });
+
+  // Añadir opción "Automático"
+  const autoBtn = document.createElement('button');
+  autoBtn.textContent = 'Automático';
+  autoBtn.setAttribute('role', 'menuitem');
+  const isAutoActive = hls.currentLevel === -1;
+  if (isAutoActive) autoBtn.classList.add('active-quality');
+  autoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hls.currentLevel = -1;
+    updateQualityLabel(btn, hls, -1);
+    menu.classList.remove('show');
+    qualityMenuOpen = false;
+  });
+  autoBtn.addEventListener('keydown', (e) => {
+    const kc = e.keyCode || e.which;
+    if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+      e.preventDefault();
+      e.stopPropagation();
+      hls.currentLevel = -1;
+      updateQualityLabel(btn, hls, -1);
+      menu.classList.remove('show');
+      qualityMenuOpen = false;
+    }
+  });
+  menu.appendChild(autoBtn);
+
+  // Toggle menú al hacer clic en el botón
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    qualityMenuOpen = !qualityMenuOpen;
+    menu.classList.toggle('show', qualityMenuOpen);
+    if (qualityMenuOpen) {
+      // Enfocar el primer elemento del menú
+      const firstItem = menu.querySelector('button');
+      if (firstItem) firstItem.focus();
+    }
+  });
+
+  // Soporte para mando (Enter) en el botón
+  btn.addEventListener('keydown', (e) => {
+    const kc = e.keyCode || e.which;
+    if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+      e.preventDefault();
+      e.stopPropagation();
+      qualityMenuOpen = !qualityMenuOpen;
+      menu.classList.toggle('show', qualityMenuOpen);
+      if (qualityMenuOpen) {
+        const firstItem = menu.querySelector('button');
+        if (firstItem) firstItem.focus();
+      }
+    }
+  });
+
+  // Cerrar menú al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    if (qualityMenuOpen && !menu.contains(e.target) && !btn.contains(e.target)) {
+      menu.classList.remove('show');
+      qualityMenuOpen = false;
+    }
+  });
+
+  // Colocar dentro del player box
+  playerBox.style.position = 'relative';
+  playerBox.appendChild(btn);
+  playerBox.appendChild(menu);
+
+  qualityBtn = btn;
+  qualityMenu = menu;
+
+  // Actualizar etiqueta inicial
+  updateQualityLabel(btn, hls, hls.currentLevel);
+}
+
+function updateQualityLabel(btn, hls, levelIndex) {
+  if (levelIndex === -1) {
+    btn.textContent = '🎬 Auto';
+    return;
+  }
+  const level = hls.levels[levelIndex];
+  if (level && level.height) {
+    btn.textContent = `🎬 ${level.height}p`;
+  } else {
+    btn.textContent = `🎬 ${levelIndex}`;
+  }
+  // Actualizar clase activa en el menú
+  if (qualityMenu) {
+    const items = qualityMenu.querySelectorAll('button');
+    items.forEach(b => {
+      const idx = parseInt(b.dataset.level);
+      b.classList.toggle('active-quality', idx === levelIndex);
+      if (b.textContent === 'Automático') {
+        b.classList.toggle('active-quality', levelIndex === -1);
+      }
+    });
+  }
+}
+
 // ===== APP LAUNCH =====
 function launchApp(){
   $('#setup').style.display = 'none';
@@ -1464,6 +1683,20 @@ function launchApp(){
     const firstFocusable = document.querySelector('.top-tab') || document.querySelector('.cat-item');
     if (firstFocusable) firstFocusable.focus();
     setupKeyListeners();
+    
+    // Asegurar que el botón de listas responda a Enter/Espacio en TV
+    const listsBtn = document.getElementById('my-lists-btn');
+    if (listsBtn) {
+      listsBtn.addEventListener('keydown', function(e) {
+        const kc = e.keyCode || e.which;
+        if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+          e.preventDefault();
+          e.stopPropagation();
+          openMyListsModal();
+        }
+      });
+    }
+    
   }, 200);
 }
 function renderTabs(){ $$('.top-tab').forEach(b=> b.classList.toggle('active', b.dataset.key === state.activeType)); }
@@ -1596,26 +1829,20 @@ function playStream(url, title){
   if(isM3U8 && window.Hls && Hls.isSupported()){
     status.textContent = 'Conectando…';
     
-    // ----- CONFIGURACIÓN HLS OPTIMIZADA (baja latencia y recuperación rápida) -----
     let reloadAttempts = 0;
     const MAX_RELOAD_ATTEMPTS = 5;
     
     const hls = new Hls({
-      // Buffer pequeño para menor delay
       maxBufferLength: 30,
       maxBufferSize: 30 * 1024 * 1024,
-      // Sincronización en vivo
       liveDurationInfinity: true,
-      liveSyncDuration: 1.5,            // Segundos de sync (en lugar de liveSyncDurationCount)
+      liveSyncDuration: 1.5,
       liveSyncDurationCount: 2,
-      // Liberar buffer viejo
       backbufferLength: 20,
-      // Parámetros de recuperación
       recoverAttempts: 10,
       enableWorker: true,
-      lowLatencyMode: false,            // Si tu servidor soporta LL-HLS, cambia a true
+      lowLatencyMode: false,
       autoLevelCapping: -1,
-      // Timeouts reducidos para detectar cortes rápido
       manifestLoadTimeout: 10000,
       levelLoadingTimeout: 10000,
       fragLoadingTimeout: 8000,
@@ -1629,12 +1856,16 @@ function playStream(url, title){
     hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
       status.textContent = 'Reproduciendo en vivo';
       video.play().catch(()=>{});
+      // Una vez cargado el manifiesto, crear el control de calidad
+      const playerBox = document.querySelector('.player-box');
+      if (playerBox) {
+        createQualityControl(hls, playerBox);
+      }
     });
     
     // Manejo de errores con reinicio rápido
     hls.on(Hls.Events.ERROR, (evt, data) => {
       if (data.fatal) {
-        // Si es un error de red o carga, reintentar inmediatamente sin esperar tanto
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR ||
             data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
             data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
@@ -1642,7 +1873,6 @@ function playStream(url, title){
           if (reloadAttempts < MAX_RELOAD_ATTEMPTS) {
             reloadAttempts++;
             status.textContent = `Reintentando (${reloadAttempts}/${MAX_RELOAD_ATTEMPTS})...`;
-            // Reintentar después de solo 1 segundo
             setTimeout(() => {
               if (state.hls) {
                 state.hls.loadSource(url);
@@ -1665,7 +1895,6 @@ function playStream(url, title){
         status.textContent = 'Error de reproducción';
         extBtn.classList.add('show');
       } else {
-        // Errores no fatales: si es un error de buffer, forzar recarga del fragmento
         if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
           if (state.hls) {
             state.hls.loadSource(url);
@@ -1706,10 +1935,17 @@ function closePlayer(){
   $('#player-overlay').classList.remove('show');
   extBtn.classList.remove('show');
   if(state.hls){ state.hls.destroy(); state.hls = null; }
+  // Eliminar controles de calidad
+  if (qualityBtn) { qualityBtn.remove(); qualityBtn = null; }
+  if (qualityMenu) { qualityMenu.remove(); qualityMenu = null; }
+  qualityMenuOpen = false;
   video.pause(); video.removeAttribute('src'); video.load();
 }
 function disconnectApp(){
   if(state.hls){ state.hls.destroy(); state.hls = null; }
+  if (qualityBtn) { qualityBtn.remove(); qualityBtn = null; }
+  if (qualityMenu) { qualityMenu.remove(); qualityMenu = null; }
+  qualityMenuOpen = false;
   video.pause(); video.removeAttribute('src'); video.load();
   $('#player-overlay').classList.remove('show');
   $('#app').classList.remove('show');
