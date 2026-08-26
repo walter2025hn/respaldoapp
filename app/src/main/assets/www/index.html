@@ -810,7 +810,7 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   border: 1px solid var(--accent-dim);
   border-radius: 6px;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 16px;
   cursor: pointer;
   z-index: 60;
   font-weight: 600;
@@ -828,7 +828,7 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 6px 0;
-  min-width: 120px;
+  min-width: 140px;
   z-index: 65;
   display: none;
   flex-direction: column;
@@ -838,16 +838,30 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 .quality-menu.show {
   display: flex;
 }
+.menu-section {
+  padding: 4px 0;
+}
+.menu-section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 6px 16px 2px;
+  letter-spacing: 0.5px;
+}
+.menu-section + .menu-section {
+  border-top: 1px solid var(--border-color);
+}
 .quality-menu button {
   background: none;
   border: none;
   color: var(--text-primary);
-  padding: 8px 16px;
+  padding: 6px 16px;
   text-align: left;
   font-size: 13px;
   cursor: pointer;
   font-family: var(--font);
   transition: background 0.15s;
+  width: 100%;
 }
 .quality-menu button:hover,
 .quality-menu button:focus {
@@ -1757,10 +1771,11 @@ function navigateFocus(direction) {
 }
 
 // ===== CONTROL DE CALIDAD Y FAVORITOS =====
-let qualityMenuOpen = false;
 let qualityBtn = null;
 let qualityMenu = null;
 let favBtn = null;
+let qualityMenuOpen = false;
+let currentScale = 'contain';
 
 function createPlayerControls(hls, playerBox) {
   // Eliminar controles previos
@@ -1769,74 +1784,155 @@ function createPlayerControls(hls, playerBox) {
   if (favBtn) { favBtn.remove(); favBtn = null; }
   qualityMenuOpen = false;
 
-  // Crear botón de calidad (solo si hay más de un nivel)
-  if (hls.levels && hls.levels.length > 1) {
-    const btn = document.createElement('button');
-    btn.className = 'quality-btn';
-    btn.textContent = '🎬 HD';
-    btn.setAttribute('tabindex', '0');
-    btn.setAttribute('role', 'button');
-    
-    const menu = document.createElement('div');
-    menu.className = 'quality-menu';
-    menu.setAttribute('role', 'menu');
-    
-    hls.levels.forEach((level, index) => {
-      const label = level.height ? `${level.height}p` : `Nivel ${index}`;
-      const isActive = hls.currentLevel === index;
-      const btnOpt = document.createElement('button');
-      btnOpt.textContent = label;
-      btnOpt.setAttribute('role', 'menuitem');
-      btnOpt.dataset.level = index;
-      if (isActive) btnOpt.classList.add('active-quality');
-      btnOpt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        hls.currentLevel = index;
-        updateQualityLabel(btn, hls, index);
-        menu.classList.remove('show');
-        qualityMenuOpen = false;
-      });
-      btnOpt.addEventListener('keydown', (e) => {
-        const kc = e.keyCode || e.which;
-        if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
-          e.preventDefault();
-          e.stopPropagation();
-          const idx = parseInt(e.target.dataset.level);
-          hls.currentLevel = idx;
-          updateQualityLabel(btn, hls, idx);
-          menu.classList.remove('show');
-          qualityMenuOpen = false;
-        }
-      });
-      menu.appendChild(btnOpt);
-    });
+  // ---- Botón de ajustes (engranaje) ----
+  const settingsBtn = document.createElement('button');
+  settingsBtn.className = 'quality-btn';
+  settingsBtn.textContent = '⚙️';
+  settingsBtn.setAttribute('tabindex', '0');
+  settingsBtn.setAttribute('role', 'button');
+  settingsBtn.setAttribute('aria-label', 'Ajustes de reproducción');
 
-    const autoBtn = document.createElement('button');
-    autoBtn.textContent = 'Automático';
-    autoBtn.setAttribute('role', 'menuitem');
-    const isAutoActive = hls.currentLevel === -1;
-    if (isAutoActive) autoBtn.classList.add('active-quality');
-    autoBtn.addEventListener('click', (e) => {
+  // ---- Menú de ajustes ----
+  const menu = document.createElement('div');
+  menu.className = 'quality-menu';
+  menu.setAttribute('role', 'menu');
+
+  // Sección Resolución
+  const resSection = document.createElement('div');
+  resSection.className = 'menu-section';
+  const resTitle = document.createElement('div');
+  resTitle.className = 'menu-section-title';
+  resTitle.textContent = 'Resolución';
+  resSection.appendChild(resTitle);
+
+  // Opción Automático
+  const autoBtn = document.createElement('button');
+  autoBtn.textContent = 'Automático';
+  autoBtn.dataset.level = '-1';
+  autoBtn.setAttribute('role', 'menuitem');
+  if (hls.currentLevel === -1) autoBtn.classList.add('active-quality');
+  autoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hls.currentLevel = -1;
+    updateMenuActive(menu, 'level', -1);
+    closeMenu();
+  });
+  autoBtn.addEventListener('keydown', handleMenuKeydown);
+  resSection.appendChild(autoBtn);
+
+  // Opciones de niveles
+  hls.levels.forEach((level, index) => {
+    const label = level.height ? `${level.height}p` : `Nivel ${index}`;
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.dataset.level = index;
+    btn.setAttribute('role', 'menuitem');
+    if (hls.currentLevel === index) btn.classList.add('active-quality');
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      hls.currentLevel = -1;
-      updateQualityLabel(btn, hls, -1);
-      menu.classList.remove('show');
-      qualityMenuOpen = false;
+      hls.currentLevel = index;
+      updateMenuActive(menu, 'level', index);
+      closeMenu();
     });
-    autoBtn.addEventListener('keydown', (e) => {
-      const kc = e.keyCode || e.which;
-      if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
-        e.preventDefault();
-        e.stopPropagation();
-        hls.currentLevel = -1;
-        updateQualityLabel(btn, hls, -1);
-        menu.classList.remove('show');
-        qualityMenuOpen = false;
+    btn.addEventListener('keydown', handleMenuKeydown);
+    resSection.appendChild(btn);
+  });
+
+  menu.appendChild(resSection);
+
+  // Sección Escalado
+  const scaleSection = document.createElement('div');
+  scaleSection.className = 'menu-section';
+  const scaleTitle = document.createElement('div');
+  scaleTitle.className = 'menu-section-title';
+  scaleTitle.textContent = 'Escalado';
+  scaleSection.appendChild(scaleTitle);
+
+  const scaleOptions = [
+    { value: 'none', label: 'Original' },
+    { value: 'contain', label: 'Ajustar' },
+    { value: 'cover', label: 'Rellenar' },
+    { value: 'fill', label: 'Estirar' }
+  ];
+
+  scaleOptions.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.textContent = opt.label;
+    btn.dataset.scale = opt.value;
+    btn.setAttribute('role', 'menuitem');
+    if (currentScale === opt.value) btn.classList.add('active-quality');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentScale = opt.value;
+      video.style.objectFit = opt.value;
+      updateMenuActive(menu, 'scale', opt.value);
+      closeMenu();
+    });
+    btn.addEventListener('keydown', handleMenuKeydown);
+    scaleSection.appendChild(btn);
+  });
+
+  menu.appendChild(scaleSection);
+
+  // Funciones auxiliares del menú
+  function closeMenu() {
+    menu.classList.remove('show');
+    qualityMenuOpen = false;
+  }
+
+  function updateMenuActive(menu, type, value) {
+    const buttons = menu.querySelectorAll('button');
+    buttons.forEach(b => {
+      if (type === 'level') {
+        const level = parseInt(b.dataset.level);
+        b.classList.toggle('active-quality', level === value);
+      } else if (type === 'scale') {
+        b.classList.toggle('active-quality', b.dataset.scale === value);
       }
     });
-    menu.appendChild(autoBtn);
+  }
 
-    btn.addEventListener('click', (e) => {
+  function handleMenuKeydown(e) {
+    const kc = e.keyCode || e.which;
+    if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+      e.preventDefault();
+      e.stopPropagation();
+      // El click ya maneja la acción
+    }
+    if (e.key === 'ArrowDown' || kc === 40 || kc === 20) {
+      e.preventDefault();
+      const items = Array.from(menu.querySelectorAll('button'));
+      const idx = items.indexOf(e.target);
+      if (idx < items.length - 1) items[idx + 1].focus();
+    }
+    if (e.key === 'ArrowUp' || kc === 38 || kc === 19) {
+      e.preventDefault();
+      const items = Array.from(menu.querySelectorAll('button'));
+      const idx = items.indexOf(e.target);
+      if (idx > 0) items[idx - 1].focus();
+    }
+    if (e.key === 'Escape' || kc === 27) {
+      e.preventDefault();
+      closeMenu();
+      settingsBtn.focus();
+    }
+  }
+
+  // Alternar menú al hacer clic en el botón
+  settingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    qualityMenuOpen = !qualityMenuOpen;
+    menu.classList.toggle('show', qualityMenuOpen);
+    if (qualityMenuOpen) {
+      const firstItem = menu.querySelector('button');
+      if (firstItem) firstItem.focus();
+    }
+  });
+
+  settingsBtn.addEventListener('keydown', (e) => {
+    const kc = e.keyCode || e.which;
+    if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+      e.preventDefault();
       e.stopPropagation();
       qualityMenuOpen = !qualityMenuOpen;
       menu.classList.toggle('show', qualityMenuOpen);
@@ -1844,37 +1940,24 @@ function createPlayerControls(hls, playerBox) {
         const firstItem = menu.querySelector('button');
         if (firstItem) firstItem.focus();
       }
-    });
-    btn.addEventListener('keydown', (e) => {
-      const kc = e.keyCode || e.which;
-      if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
-        e.preventDefault();
-        e.stopPropagation();
-        qualityMenuOpen = !qualityMenuOpen;
-        menu.classList.toggle('show', qualityMenuOpen);
-        if (qualityMenuOpen) {
-          const firstItem = menu.querySelector('button');
-          if (firstItem) firstItem.focus();
-        }
-      }
-    });
+    }
+  });
 
-    document.addEventListener('click', (e) => {
-      if (qualityMenuOpen && !menu.contains(e.target) && !btn.contains(e.target)) {
-        menu.classList.remove('show');
-        qualityMenuOpen = false;
-      }
-    });
+  // Cerrar menú al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    if (qualityMenuOpen && !menu.contains(e.target) && !settingsBtn.contains(e.target)) {
+      closeMenu();
+    }
+  });
 
-    playerBox.style.position = 'relative';
-    playerBox.appendChild(btn);
-    playerBox.appendChild(menu);
-    qualityBtn = btn;
-    qualityMenu = menu;
-    updateQualityLabel(btn, hls, hls.currentLevel);
-  }
+  // Agregar al player
+  playerBox.style.position = 'relative';
+  playerBox.appendChild(settingsBtn);
+  playerBox.appendChild(menu);
+  qualityBtn = settingsBtn;
+  qualityMenu = menu;
 
-  // Crear botón de favoritos
+  // ---- Botón de favoritos ----
   const fav = document.createElement('button');
   fav.className = 'fav-btn';
   fav.textContent = '☆';
@@ -1886,7 +1969,6 @@ function createPlayerControls(hls, playerBox) {
     e.stopPropagation();
     if (state.currentPlaybackItem) {
       toggleFavorite(state.currentPlaybackItem);
-      // Actualizar el botón
       const isFav = isFavorite(state.currentPlaybackItem);
       fav.textContent = isFav ? '⭐' : '☆';
       fav.classList.toggle('active-fav', isFav);
@@ -1908,28 +1990,11 @@ function createPlayerControls(hls, playerBox) {
   playerBox.appendChild(fav);
   favBtn = fav;
   updateFavButton();
-}
 
-function updateQualityLabel(btn, hls, levelIndex) {
-  if (levelIndex === -1) {
-    btn.textContent = '🎬 Auto';
-    return;
-  }
-  const level = hls.levels[levelIndex];
-  if (level && level.height) {
-    btn.textContent = `🎬 ${level.height}p`;
-  } else {
-    btn.textContent = `🎬 ${levelIndex}`;
-  }
-  if (qualityMenu) {
-    const items = qualityMenu.querySelectorAll('button');
-    items.forEach(b => {
-      const idx = parseInt(b.dataset.level);
-      b.classList.toggle('active-quality', idx === levelIndex);
-      if (b.textContent === 'Automático') {
-        b.classList.toggle('active-quality', levelIndex === -1);
-      }
-    });
+  // Inicializar el escalado por defecto (si no se ha establecido)
+  if (!video.style.objectFit || video.style.objectFit === '') {
+    video.style.objectFit = 'contain';
+    currentScale = 'contain';
   }
 }
 
