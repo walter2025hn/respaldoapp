@@ -1250,7 +1250,6 @@ window.addEventListener('popstate', function(event) {
 });
 
 // ===== MANEJO DE BOTONES DEL MANDO (optimizado para TV) =====
-// Función que intenta enfocar un elemento interactivo si no hay foco
 function ensureFocus() {
   const active = document.activeElement;
   if (!active || active === document.body) {
@@ -1261,17 +1260,13 @@ function ensureFocus() {
   }
 }
 
-// Escuchar eventos de teclado en múltiples formas (keydown, keyup, keypress) y en window y document
 function setupKeyListeners() {
   const handler = function(e) {
     const key = e.key;
     const keyCode = e.keyCode || e.which;
     const type = e.type;
-    
-    // Solo procesar si es keydown o keyup (keypress no se usa para navegación)
     if (type === 'keypress') return;
     
-    // Detectar tecla atrás
     const isBackKey = (
       key === 'Escape' || key === 'Back' || key === 'GoBack' || key === 'BrowserBack' ||
       key === 'Exit' || key === 'XF86Back' ||
@@ -1320,7 +1315,6 @@ function setupKeyListeners() {
       return;
     }
     
-    // Navegación D-Pad
     if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
       e.preventDefault();
       navigateFocus('up');
@@ -1370,23 +1364,18 @@ function setupKeyListeners() {
       return;
     }
     
-    // Si no hay foco, forzarlo
     if (document.activeElement === document.body) {
       ensureFocus();
     }
   };
   
-  // Añadir listeners en window y document para cubrir todos los casos
   window.addEventListener('keydown', handler);
   window.addEventListener('keyup', handler);
   document.addEventListener('keydown', handler);
   document.addEventListener('keyup', handler);
-  
-  // También forzar foco cada 2 segundos para mantener la navegación
   setInterval(ensureFocus, 2000);
 }
 
-// Navegación espacial optimizada
 function navigateFocus(direction) {
   const focusables = Array.from(document.querySelectorAll('[tabindex="0"]:not([tabindex="-1"])'))
     .filter(el => {
@@ -1471,11 +1460,9 @@ function launchApp(){
   renderMain();
   $('#search-input').oninput = ()=>{ state.renderLimit = 60; renderMain(); };
   pushHistoryState();
-  // Enfocar primer elemento y configurar listeners
   setTimeout(() => {
     const firstFocusable = document.querySelector('.top-tab') || document.querySelector('.cat-item');
     if (firstFocusable) firstFocusable.focus();
-    // Iniciar la escucha de teclas después de que la app esté lista
     setupKeyListeners();
   }, 200);
 }
@@ -1609,21 +1596,29 @@ function playStream(url, title){
   if(isM3U8 && window.Hls && Hls.isSupported()){
     status.textContent = 'Conectando…';
     
+    // ----- CONFIGURACIÓN HLS OPTIMIZADA (baja latencia y recuperación rápida) -----
     let reloadAttempts = 0;
-    const MAX_RELOAD_ATTEMPTS = 3;
+    const MAX_RELOAD_ATTEMPTS = 5;
     
     const hls = new Hls({
-      maxBufferLength: 60,
+      // Buffer pequeño para menor delay
+      maxBufferLength: 30,
+      maxBufferSize: 30 * 1024 * 1024,
+      // Sincronización en vivo
       liveDurationInfinity: true,
-      liveSyncDurationCount: 3,
-      backbufferLength: 30,
+      liveSyncDuration: 1.5,            // Segundos de sync (en lugar de liveSyncDurationCount)
+      liveSyncDurationCount: 2,
+      // Liberar buffer viejo
+      backbufferLength: 20,
+      // Parámetros de recuperación
+      recoverAttempts: 10,
       enableWorker: true,
-      lowLatencyMode: false,
+      lowLatencyMode: false,            // Si tu servidor soporta LL-HLS, cambia a true
       autoLevelCapping: -1,
-      maxBufferSize: 60 * 1024 * 1024,
-      recoverAttempts: 5,
-      manifestLoadTimeout: 30000,
-      levelLoadingTimeout: 30000,
+      // Timeouts reducidos para detectar cortes rápido
+      manifestLoadTimeout: 10000,
+      levelLoadingTimeout: 10000,
+      fragLoadingTimeout: 8000,
       startLevel: -1
     });
     
@@ -1636,24 +1631,28 @@ function playStream(url, title){
       video.play().catch(()=>{});
     });
     
+    // Manejo de errores con reinicio rápido
     hls.on(Hls.Events.ERROR, (evt, data) => {
       if (data.fatal) {
+        // Si es un error de red o carga, reintentar inmediatamente sin esperar tanto
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR ||
             data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
-            data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR) {
+            data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+            data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR) {
           if (reloadAttempts < MAX_RELOAD_ATTEMPTS) {
             reloadAttempts++;
             status.textContent = `Reintentando (${reloadAttempts}/${MAX_RELOAD_ATTEMPTS})...`;
+            // Reintentar después de solo 1 segundo
             setTimeout(() => {
               if (state.hls) {
                 state.hls.loadSource(url);
                 state.hls.attachMedia(video);
               }
-            }, 3000);
+            }, 1000);
             return;
           } else {
             status.classList.add('err');
-            status.textContent = 'Error: No se pudo cargar el stream (fuente inaccesible).';
+            status.textContent = 'Error: No se pudo cargar el stream.';
             extBtn.classList.add('show');
             return;
           }
@@ -1665,9 +1664,18 @@ function playStream(url, title){
         status.classList.add('err');
         status.textContent = 'Error de reproducción';
         extBtn.classList.add('show');
+      } else {
+        // Errores no fatales: si es un error de buffer, forzar recarga del fragmento
+        if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+          if (state.hls) {
+            state.hls.loadSource(url);
+            state.hls.attachMedia(video);
+          }
+        }
       }
     });
     
+    // Si el video falla, reiniciar HLS rápidamente
     video.addEventListener('error', function onVideoError() {
       if (this._reloading) return;
       this._reloading = true;
@@ -1678,7 +1686,7 @@ function playStream(url, title){
           state.hls.attachMedia(video);
         }
         this._reloading = false;
-      }, 3000);
+      }, 1500);
       this.removeEventListener('error', onVideoError);
     }, {once: true});
     
