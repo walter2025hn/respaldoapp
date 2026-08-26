@@ -1249,112 +1249,142 @@ window.addEventListener('popstate', function(event) {
   }
 });
 
-// ===== MANEJO DE BOTONES DEL MANDO (optimizado) =====
-document.addEventListener('keydown', function(e) {
-  const key = e.key;
-  const keyCode = e.keyCode || e.which;
-  
-  const playerOverlay = document.getElementById('player-overlay');
-  const video = document.getElementById('video');
-  const isBackKey = (
-    key === 'Escape' || key === 'Back' || key === 'GoBack' || key === 'BrowserBack' ||
-    key === 'Exit' || key === 'XF86Back' ||
-    keyCode === 27 || keyCode === 4 || keyCode === 8 ||
-    keyCode === 166 || keyCode === 10009 || keyCode === 461
-  );
+// ===== MANEJO DE BOTONES DEL MANDO (optimizado para TV) =====
+// Función que intenta enfocar un elemento interactivo si no hay foco
+function ensureFocus() {
+  const active = document.activeElement;
+  if (!active || active === document.body) {
+    const first = document.querySelector('[tabindex="0"]:not([tabindex="-1"])') ||
+                  document.querySelector('.top-tab') ||
+                  document.querySelector('.cat-item');
+    if (first) first.focus();
+  }
+}
 
-  if (playerOverlay && playerOverlay.classList.contains('show') && video) {
-    if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66 || key === 'MediaPlayPause' || keyCode === 85) {
-      e.preventDefault();
-      if (video.paused) video.play(); else video.pause();
+// Escuchar eventos de teclado en múltiples formas (keydown, keyup, keypress) y en window y document
+function setupKeyListeners() {
+  const handler = function(e) {
+    const key = e.key;
+    const keyCode = e.keyCode || e.which;
+    const type = e.type;
+    
+    // Solo procesar si es keydown o keyup (keypress no se usa para navegación)
+    if (type === 'keypress') return;
+    
+    // Detectar tecla atrás
+    const isBackKey = (
+      key === 'Escape' || key === 'Back' || key === 'GoBack' || key === 'BrowserBack' ||
+      key === 'Exit' || key === 'XF86Back' ||
+      keyCode === 27 || keyCode === 4 || keyCode === 8 ||
+      keyCode === 166 || keyCode === 10009 || keyCode === 461
+    );
+    
+    const playerOverlay = document.getElementById('player-overlay');
+    const video = document.getElementById('video');
+    
+    if (playerOverlay && playerOverlay.classList.contains('show') && video) {
+      if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66 || key === 'MediaPlayPause' || keyCode === 85) {
+        e.preventDefault();
+        if (video.paused) video.play(); else video.pause();
+        return;
+      }
+      if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22 || key === 'MediaNextTrack' || keyCode === 87) {
+        e.preventDefault();
+        video.currentTime += 10;
+        return;
+      }
+      if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21 || key === 'MediaPreviousTrack' || keyCode === 88) {
+        e.preventDefault();
+        video.currentTime -= 10;
+        return;
+      }
+      if (isBackKey) {
+        e.preventDefault();
+        closePlayer();
+        return;
+      }
+      if (key === 'Menu' || keyCode === 82) {
+        e.preventDefault();
+        closePlayer();
+        return;
+      }
       return;
     }
-    if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22 || key === 'MediaNextTrack' || keyCode === 87) {
-      e.preventDefault();
-      video.currentTime += 10;
+    
+    if ($('#my-lists-modal').classList.contains('show')) {
+      if (isBackKey) {
+        e.preventDefault();
+        closeMyListsModal();
+        return;
+      }
       return;
     }
-    if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21 || key === 'MediaPreviousTrack' || keyCode === 88) {
+    
+    // Navegación D-Pad
+    if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
       e.preventDefault();
-      video.currentTime -= 10;
+      navigateFocus('up');
       return;
     }
+    if (key === 'ArrowDown' || keyCode === 40 || keyCode === 20) {
+      e.preventDefault();
+      navigateFocus('down');
+      return;
+    }
+    if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21) {
+      e.preventDefault();
+      navigateFocus('left');
+      return;
+    }
+    if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22) {
+      e.preventDefault();
+      navigateFocus('right');
+      return;
+    }
+    
+    if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66) {
+      e.preventDefault();
+      const active = document.activeElement;
+      if (active && active !== document.body && typeof active.click === 'function') {
+        active.click();
+      }
+      return;
+    }
+    
     if (isBackKey) {
       e.preventDefault();
-      closePlayer();
+      window.history.back();
       return;
     }
-    if (key === 'Menu' || keyCode === 82) {
+    
+    if ((key === 'Menu' || keyCode === 82) && !$('#my-lists-modal').classList.contains('show')) {
       e.preventDefault();
-      closePlayer();
+      openMyListsModal();
       return;
     }
-    return;
-  }
-  
-  if ($('#my-lists-modal').classList.contains('show')) {
-    if (isBackKey) {
+    
+    if (key === 'Search' || keyCode === 84) {
       e.preventDefault();
-      closeMyListsModal();
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.focus();
       return;
     }
-    return;
-  }
-  
-  if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
-    e.preventDefault();
-    navigateFocus('up');
-    return;
-  }
-  if (key === 'ArrowDown' || keyCode === 40 || keyCode === 20) {
-    e.preventDefault();
-    navigateFocus('down');
-    return;
-  }
-  if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21) {
-    e.preventDefault();
-    navigateFocus('left');
-    return;
-  }
-  if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22) {
-    e.preventDefault();
-    navigateFocus('right');
-    return;
-  }
-  
-  if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66) {
-    e.preventDefault();
-    const active = document.activeElement;
-    if (active && active !== document.body && typeof active.click === 'function') {
-      active.click();
+    
+    // Si no hay foco, forzarlo
+    if (document.activeElement === document.body) {
+      ensureFocus();
     }
-    return;
-  }
-
-  if (isBackKey) {
-    e.preventDefault();
-    window.history.back();
-    return;
-  }
+  };
   
-  if ((key === 'Menu' || keyCode === 82) && !$('#my-lists-modal').classList.contains('show')) {
-    e.preventDefault();
-    openMyListsModal();
-    return;
-  }
+  // Añadir listeners en window y document para cubrir todos los casos
+  window.addEventListener('keydown', handler);
+  window.addEventListener('keyup', handler);
+  document.addEventListener('keydown', handler);
+  document.addEventListener('keyup', handler);
   
-  if (key === 'Search' || keyCode === 84) {
-    e.preventDefault();
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) searchInput.focus();
-    return;
-  }
-  
-  if (document.activeElement === document.body) {
-    const firstFocusable = document.querySelector('[tabindex="0"]:not([tabindex="-1"])');
-    if (firstFocusable) firstFocusable.focus();
-  }
-});
+  // También forzar foco cada 2 segundos para mantener la navegación
+  setInterval(ensureFocus, 2000);
+}
 
 // Navegación espacial optimizada
 function navigateFocus(direction) {
@@ -1441,10 +1471,13 @@ function launchApp(){
   renderMain();
   $('#search-input').oninput = ()=>{ state.renderLimit = 60; renderMain(); };
   pushHistoryState();
+  // Enfocar primer elemento y configurar listeners
   setTimeout(() => {
     const firstFocusable = document.querySelector('.top-tab') || document.querySelector('.cat-item');
     if (firstFocusable) firstFocusable.focus();
-  }, 100);
+    // Iniciar la escucha de teclas después de que la app esté lista
+    setupKeyListeners();
+  }, 200);
 }
 function renderTabs(){ $$('.top-tab').forEach(b=> b.classList.toggle('active', b.dataset.key === state.activeType)); }
 function currentDataset(){
