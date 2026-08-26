@@ -805,9 +805,9 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   position: absolute;
   bottom: 80px;
   right: 14px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  border: 1px solid var(--accent-dim);
+  background: #fff;
+  color: #0A0D10;
+  border: 1px solid #ccc;
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 16px;
@@ -815,10 +815,14 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   z-index: 60;
   font-weight: 600;
   font-family: var(--font);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .quality-btn:focus {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+.quality-btn:hover {
+  background: #f0f0f0;
 }
 .quality-menu {
   position: absolute;
@@ -874,29 +878,7 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   background: rgba(245,166,35,0.1);
 }
 
-.fav-btn {
-  position: absolute;
-  bottom: 80px;
-  right: 70px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  border: 1px solid var(--accent-dim);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 16px;
-  cursor: pointer;
-  z-index: 60;
-  font-weight: 600;
-  font-family: var(--font);
-}
-.fav-btn:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.fav-btn.active-fav {
-  color: #FFD700;
-  border-color: #FFD700;
-}
+/* Botón de favoritos externo eliminado, ahora dentro del menú */
 
 .continue-watching-section {
   margin-bottom: 24px;
@@ -1144,8 +1126,10 @@ function toggleFavorite(item) {
     favs.push({ id: item.id, type: item.type, title: item.title, url: item.url, logo: item.logo || '' });
     saveFavorites(favs);
   }
-  updateFavButton();
   if (state.activeType === 'favorites') renderMain();
+  // Actualizar el botón de favoritos en el menú si está abierto
+  const favBtn = document.querySelector('.quality-menu button[data-action="favorite"]');
+  if (favBtn) updateFavMenuButton(favBtn);
 }
 
 function isFavorite(item) {
@@ -1154,23 +1138,16 @@ function isFavorite(item) {
   return favs.some(f => f.id === item.id && f.type === item.type);
 }
 
-function getFavoritesByType(type) {
-  const favs = loadFavorites();
-  return favs.filter(f => f.type === type);
-}
-
-function updateFavButton() {
-  const btn = document.querySelector('.fav-btn');
-  if (!btn) return;
+function updateFavMenuButton(btn) {
   const item = state.currentPlaybackItem;
   if (!item || !item.id) {
-    btn.style.display = 'none';
+    btn.textContent = '☆ Favorito';
+    btn.classList.remove('active-quality');
     return;
   }
-  btn.style.display = 'block';
   const isFav = isFavorite(item);
-  btn.textContent = isFav ? '⭐' : '☆';
-  btn.classList.toggle('active-fav', isFav);
+  btn.textContent = isFav ? '⭐ Quitar favorito' : '☆ Añadir favorito';
+  btn.classList.toggle('active-quality', isFav);
 }
 
 // ===== CONTINUAR VIENDO =====
@@ -1773,7 +1750,6 @@ function navigateFocus(direction) {
 // ===== CONTROL DE CALIDAD Y FAVORITOS =====
 let qualityBtn = null;
 let qualityMenu = null;
-let favBtn = null;
 let qualityMenuOpen = false;
 let currentScale = 'contain';
 
@@ -1781,7 +1757,6 @@ function createPlayerControls(hls, playerBox) {
   // Eliminar controles previos
   if (qualityBtn) { qualityBtn.remove(); qualityBtn = null; }
   if (qualityMenu) { qualityMenu.remove(); qualityMenu = null; }
-  if (favBtn) { favBtn.remove(); favBtn = null; }
   qualityMenuOpen = false;
 
   // ---- Botón de ajustes (engranaje) ----
@@ -1874,6 +1849,30 @@ function createPlayerControls(hls, playerBox) {
 
   menu.appendChild(scaleSection);
 
+  // Sección Favoritos
+  const favSection = document.createElement('div');
+  favSection.className = 'menu-section';
+  const favTitle = document.createElement('div');
+  favTitle.className = 'menu-section-title';
+  favTitle.textContent = 'Favoritos';
+  favSection.appendChild(favTitle);
+
+  const favBtn = document.createElement('button');
+  favBtn.dataset.action = 'favorite';
+  favBtn.setAttribute('role', 'menuitem');
+  updateFavMenuButton(favBtn);
+  favBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.currentPlaybackItem) {
+      toggleFavorite(state.currentPlaybackItem);
+      updateFavMenuButton(favBtn);
+      closeMenu();
+    }
+  });
+  favBtn.addEventListener('keydown', handleMenuKeydown);
+  favSection.appendChild(favBtn);
+  menu.appendChild(favSection);
+
   // Funciones auxiliares del menú
   function closeMenu() {
     menu.classList.remove('show');
@@ -1924,6 +1923,9 @@ function createPlayerControls(hls, playerBox) {
     qualityMenuOpen = !qualityMenuOpen;
     menu.classList.toggle('show', qualityMenuOpen);
     if (qualityMenuOpen) {
+      // Actualizar el botón de favoritos al abrir el menú
+      const favBtn = menu.querySelector('button[data-action="favorite"]');
+      if (favBtn) updateFavMenuButton(favBtn);
       const firstItem = menu.querySelector('button');
       if (firstItem) firstItem.focus();
     }
@@ -1937,6 +1939,8 @@ function createPlayerControls(hls, playerBox) {
       qualityMenuOpen = !qualityMenuOpen;
       menu.classList.toggle('show', qualityMenuOpen);
       if (qualityMenuOpen) {
+        const favBtn = menu.querySelector('button[data-action="favorite"]');
+        if (favBtn) updateFavMenuButton(favBtn);
         const firstItem = menu.querySelector('button');
         if (firstItem) firstItem.focus();
       }
@@ -1956,40 +1960,6 @@ function createPlayerControls(hls, playerBox) {
   playerBox.appendChild(menu);
   qualityBtn = settingsBtn;
   qualityMenu = menu;
-
-  // ---- Botón de favoritos ----
-  const fav = document.createElement('button');
-  fav.className = 'fav-btn';
-  fav.textContent = '☆';
-  fav.setAttribute('tabindex', '0');
-  fav.setAttribute('role', 'button');
-  fav.setAttribute('aria-label', 'Añadir a favoritos');
-  
-  fav.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (state.currentPlaybackItem) {
-      toggleFavorite(state.currentPlaybackItem);
-      const isFav = isFavorite(state.currentPlaybackItem);
-      fav.textContent = isFav ? '⭐' : '☆';
-      fav.classList.toggle('active-fav', isFav);
-    }
-  });
-  fav.addEventListener('keydown', (e) => {
-    const kc = e.keyCode || e.which;
-    if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (state.currentPlaybackItem) {
-        toggleFavorite(state.currentPlaybackItem);
-        const isFav = isFavorite(state.currentPlaybackItem);
-        fav.textContent = isFav ? '⭐' : '☆';
-        fav.classList.toggle('active-fav', isFav);
-      }
-    }
-  });
-  playerBox.appendChild(fav);
-  favBtn = fav;
-  updateFavButton();
 
   // Inicializar el escalado por defecto (si no se ha establecido)
   if (!video.style.objectFit || video.style.objectFit === '') {
@@ -2404,7 +2374,6 @@ function closePlayer(){
   if(state.hls){ state.hls.destroy(); state.hls = null; }
   if (qualityBtn) { qualityBtn.remove(); qualityBtn = null; }
   if (qualityMenu) { qualityMenu.remove(); qualityMenu = null; }
-  if (favBtn) { favBtn.remove(); favBtn = null; }
   qualityMenuOpen = false;
   video.pause(); video.removeAttribute('src'); video.load();
   state.currentPlaybackItem = null;
@@ -2413,7 +2382,6 @@ function disconnectApp(){
   if(state.hls){ state.hls.destroy(); state.hls = null; }
   if (qualityBtn) { qualityBtn.remove(); qualityBtn = null; }
   if (qualityMenu) { qualityMenu.remove(); qualityMenu = null; }
-  if (favBtn) { favBtn.remove(); favBtn = null; }
   qualityMenuOpen = false;
   if (continueUpdateInterval) {
     clearInterval(continueUpdateInterval);
