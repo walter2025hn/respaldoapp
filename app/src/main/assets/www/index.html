@@ -43,10 +43,11 @@ body {
   border-radius:8px;
 }
 
-/* ===== ANIMACIONES MEJORADAS (más rápidas) ===== */
+/* ===== ANIMACIONES MEJORADAS (equilibrio velocidad/visibilidad) ===== */
 .chan-card, .series-row, .ep-row, .cat-item, .top-tab, .profile-card {
-  transition: transform 0.03s ease, border-color 0.03s ease, box-shadow 0.03s ease !important;
+  transition: transform 0.05s ease, border-color 0.05s ease, box-shadow 0.05s ease !important;
   will-change: transform;
+  backface-visibility: hidden;
 }
 .chan-card:hover, .chan-card:focus {
   transform: scale(1.08) translateY(-4px) !important;
@@ -73,21 +74,11 @@ body {
 
 /* ===== ANIMACIÓN DE ENTRADA (PÁGINA) ===== */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity:0; transform:translateY(30px); }
+  to { opacity:1; transform:translateY(0); }
 }
-#setup {
-  animation: fadeInUp 3s ease-out both; /* antes 12s */
-}
-#app.show {
-  animation: fadeInUp 3s ease-out both; /* antes 12s */
-}
+#setup { animation: fadeInUp 3s ease-out both; }
+#app.show { animation: fadeInUp 3s ease-out both; }
 
 /* ===== SPLASH LOGO ANIMADO ===== */
 .splash-logo {
@@ -107,28 +98,15 @@ body {
   font-weight: 700;
   color: #0A0D10;
   box-shadow: 0 0 0 8px rgba(245,166,35,0.2);
-  animation: splashAnim 5s ease-out forwards; /* 5 segundos */
+  animation: splashAnim 5s ease-out forwards;
   pointer-events: none;
   font-family: var(--font);
 }
 @keyframes splashAnim {
-  0% {
-    transform: translate(-50%, -50%) scale(0.2) rotate(-180deg);
-    opacity: 0;
-  }
-  30% {
-    transform: translate(-50%, -50%) scale(1.2) rotate(0deg);
-    opacity: 1;
-  }
-  60% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
-    opacity: 0;
-    visibility: hidden;
-  }
+  0% { transform: translate(-50%, -50%) scale(0.2) rotate(-180deg); opacity:0; }
+  30% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity:1; }
+  60% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity:1; }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity:0; visibility:hidden; }
 }
 
 /* ===== SETUP ===== */
@@ -166,17 +144,8 @@ body {
   animation:pulse 1.8s infinite ease-in-out;
 }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-.brand h1 {
-  font-size:22px;
-  font-weight:700;
-  letter-spacing:0.5px;
-}
-.setup-head p {
-  color:var(--text-secondary);
-  font-size:13px;
-  margin-top:6px;
-  line-height:1.5;
-}
+.brand h1 { font-size:22px; font-weight:700; letter-spacing:0.5px; }
+.setup-head p { color:var(--text-secondary); font-size:13px; margin-top:6px; line-height:1.5; }
 .field { margin-bottom:16px; }
 .field label {
   display:block;
@@ -272,19 +241,8 @@ body {
   color:var(--accent);
 }
 .profile-info { flex:1; min-width:0; }
-.profile-name {
-  font-size:13px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.profile-sub {
-  font-size:11px;
-  color:var(--text-secondary);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
+.profile-name { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-sub { font-size:11px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .profile-use-btn {
   background:var(--accent);
   color:#0A0D10;
@@ -375,7 +333,7 @@ body {
   padding:6px 14px;
   border-radius:18px;
   cursor:pointer;
-  transition:background 0.15s, color 0.15s, transform 0.03s;
+  transition:background 0.15s, color 0.15s, transform 0.05s;
 }
 .top-tab.active { background:var(--accent-bg); color:var(--accent); }
 .top-tab:hover:not(.active) { color:var(--text-primary); }
@@ -402,7 +360,7 @@ body {
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:border-color 0.15s, color 0.15s, transform 0.03s;
+  transition:border-color 0.15s, color 0.15s, transform 0.05s;
 }
 .icon-btn:hover { border-color:var(--text-muted); color:var(--text-primary); }
 .icon-btn:focus { transform:scale(1.12); }
@@ -443,7 +401,7 @@ body {
   font-size:13px;
   color:var(--text-secondary);
   border-left:2px solid transparent;
-  transition:color 0.12s, background 0.12s, transform 0.03s;
+  transition:color 0.12s, background 0.12s, transform 0.05s;
 }
 .cat-item:hover { color:var(--text-primary); background:rgba(255,255,255,0.02); }
 .cat-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--accent-bg); }
@@ -455,6 +413,7 @@ body {
   overflow-y:auto;
   padding:18px 22px 40px;
   scroll-behavior: auto; /* Scroll instantáneo */
+  contain: layout style paint; /* Aislamiento para mejorar rendimiento */
 }
 .grid-header {
   display:flex;
@@ -469,6 +428,7 @@ body {
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
   gap:14px;
+  contain: layout style paint;
 }
 .channel-grid.poster-grid {
   grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
@@ -480,8 +440,9 @@ body {
   border-radius:var(--radius);
   padding:12px;
   cursor:pointer;
-  transition:transform 0.03s ease, border-color 0.03s ease, box-shadow 0.03s ease;
+  transition:transform 0.05s ease, border-color 0.05s ease, box-shadow 0.05s ease;
   will-change: transform;
+  backface-visibility: hidden;
 }
 .chan-card:focus {
   transform: scale(1.08) translateY(-4px);
@@ -524,7 +485,7 @@ body {
   border-radius:var(--radius);
   overflow:hidden;
   position:relative;
-  transition:transform 0.03s ease, box-shadow 0.03s ease;
+  transition:transform 0.05s ease, box-shadow 0.05s ease;
 }
 .chan-card.poster:focus {
   transform: scale(1.08);
@@ -555,7 +516,6 @@ body {
   font-size:28px;
   font-weight:700;
 }
-/* Nombre de la película dentro del poster (superpuesto) */
 .chan-card.poster .chan-name {
   position:absolute;
   left:0;
@@ -585,7 +545,7 @@ body {
   border-radius:var(--radius);
   padding:10px 14px;
   cursor:pointer;
-  transition:border-color 0.03s, transform 0.03s;
+  transition:border-color 0.05s, transform 0.05s;
 }
 .series-row:focus {
   transform: scale(1.04);
@@ -612,7 +572,7 @@ body {
   border-radius:8px;
   cursor:pointer;
   font-size:13px;
-  transition:border-color 0.03s, transform 0.03s;
+  transition:border-color 0.05s, transform 0.05s;
 }
 .ep-row:focus {
   transform: scale(1.04);
@@ -768,7 +728,6 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 
 /* ===== OPTIMIZACIONES PARA TV BOX (Android 14) ===== */
 @media (min-width: 1200px) {
-  /* Tamaños de fuente y padding más grandes para pantallas grandes */
   .chan-name { font-size: 14px; }
   .cat-item { font-size: 15px; padding: 10px 20px; }
   .top-tab { font-size: 14px; padding: 8px 20px; }
@@ -799,6 +758,39 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 @media (min-width: 2000px) {
   .channel-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; }
   .channel-grid.poster-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 28px; }
+}
+
+@media (max-width: 760px) {
+  #app { grid-template-columns:1fr; }
+  .hamburger {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:34px; height:34px;
+    border:1px solid var(--border-color);
+    border-radius:8px;
+    background:none;
+    color:var(--text-primary);
+    font-size:18px;
+    cursor:pointer;
+  }
+  .topbar .brand h1 { font-size:14px; }
+  .search-wrap { max-width:none; }
+  .sidebar {
+    position:fixed;
+    left:-260px;
+    top:56px;
+    bottom:0;
+    width:240px;
+    z-index:40;
+    transition:left 0.2s;
+  }
+  .sidebar.open { left:0; }
+  .top-tabs { display:none; }
+  .mobile-type-tabs { display:flex; }
+  .conn-name { display:none; }
+  .channel-grid { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
+  .channel-grid.poster-grid { grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:12px; }
 }
 </style>
 </head>
@@ -847,7 +839,6 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
       <input type="text" id="search-input" placeholder="Buscar canal…">
     </div>
     <div class="top-tabs" id="top-tabs"></div>
-    <!-- Mostramos el usuario y su fecha de vencimiento -->
     <div class="conn-name" id="conn-name"></div>
     <button class="icon-btn" id="my-lists-btn">📋</button>
     <button class="icon-btn" id="disconnect-btn">⏻</button>
@@ -931,15 +922,12 @@ function saveHistory(list){ try{ localStorage.setItem(HISTORY_KEY, JSON.stringif
 function addToHistory(title, url) {
   if (!title || !url) return;
   const history = loadHistory();
-  // Evitar duplicados exactos (mismo título y url)
   const exists = history.some(item => item.title === title && item.url === url);
   if (!exists) {
     history.unshift({ title, url, timestamp: Date.now() });
-    // Limitar a 100 elementos para no saturar localStorage
     if (history.length > 100) history.pop();
     saveHistory(history);
   } else {
-    // Mover al principio si ya existe (actualizar timestamp)
     const idx = history.findIndex(item => item.title === title && item.url === url);
     if (idx > 0) {
       const item = history.splice(idx, 1)[0];
@@ -961,7 +949,7 @@ function profileKeyOf(p){
   return 'xtream:' + p.xtream.server + ':' + p.xtream.user;
 }
 function defaultProfileName(p){
-  return p.xtream.user; // Mostramos el usuario
+  return p.xtream.user;
 }
 function upsertProfile(profile, customName){
   const list = loadProfiles();
@@ -1060,7 +1048,6 @@ async function xtreamApi(base, user, pass, action, extra){
   return res.json(); 
 }
 
-// ===== useProfile (solo para xtream) =====
 async function useProfile(id){
   const p = loadProfiles().find(x => x.id === id);
   if(!p) return;
@@ -1071,7 +1058,6 @@ async function useProfile(id){
   }
 }
 
-// ===== connectXtream MEJORADO (compatible con todos los servidores) =====
 async function connectXtream(opts){
   opts = opts || {};
   let base = opts.server || SERVIDORES[0];
@@ -1095,43 +1081,34 @@ async function connectXtream(opts){
     try {
       const auth = await xtreamApi(baseTry, user, pass);
       
-      // ---------- NUEVA LÓGICA DE AUTENTICACIÓN FLEXIBLE ----------
       let isValid = false;
       let userInfo = null;
       
-      // Caso 1: estructura clásica con user_info.auth
       if (auth && auth.user_info && auth.user_info.auth === 1) {
         isValid = true;
         userInfo = auth.user_info;
       }
-      // Caso 2: auth en la raíz (algunos servidores lo ponen así)
       else if (auth && auth.auth === 1) {
         isValid = true;
         userInfo = auth.user_info || auth;
       }
-      // Caso 3: si existe user_info y tiene username (asumimos autenticado)
       else if (auth && auth.user_info && auth.user_info.username) {
         isValid = true;
         userInfo = auth.user_info;
       }
-      // Caso 4: si la respuesta tiene 'user_info' y no hay error (puede que no tenga auth)
       else if (auth && auth.user_info) {
         isValid = true;
         userInfo = auth.user_info;
       }
-      // Caso 5: si la respuesta es un objeto con datos de usuario (algunos servers devuelven directamente)
       else if (auth && typeof auth === 'object' && auth.username) {
         isValid = true;
         userInfo = auth;
       }
       
       if (!isValid) {
-        // Si no se reconoce, lanzamos error para probar el siguiente servidor
         throw new Error('Credenciales inválidas o respuesta inesperada');
       }
-      // -------------------------------------------------------------
       
-      // Si llegamos aquí, la autenticación fue exitosa
       const liveCats = await xtreamApi(baseTry, user, pass, 'get_live_categories').catch(()=>[]);
       const liveStreams = await xtreamApi(baseTry, user, pass, 'get_live_streams').catch(()=>[]);
       const vodCats = await xtreamApi(baseTry, user, pass, 'get_vod_categories').catch(()=>[]);
@@ -1151,7 +1128,6 @@ async function connectXtream(opts){
       state.mode = 'xtream';
       state.xtream = { base: baseTry, user, pass };
       
-      // ----- FECHA DE VENCIMIENTO (buscar en varios sitios) -----
       let expDateRaw = null;
       if (userInfo) {
         if (userInfo.exp_date) expDateRaw = userInfo.exp_date;
@@ -1159,7 +1135,6 @@ async function connectXtream(opts){
         else if (userInfo.expire_date) expDateRaw = userInfo.expire_date;
         else if (userInfo.expiry_date) expDateRaw = userInfo.expiry_date;
       }
-      // Si no está en userInfo, buscar en auth directamente
       if (!expDateRaw && auth) {
         if (auth.exp_date) expDateRaw = auth.exp_date;
         else if (auth.expiration_date) expDateRaw = auth.expiration_date;
@@ -1172,7 +1147,6 @@ async function connectXtream(opts){
         formattedDate = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
       }
       state.connName = user + ' | ' + formattedDate;
-      // ---------------------------------------------------------
 
       state.channels = channels;
       state.categories = buildCategoriesFromChannels(channels);
@@ -1189,7 +1163,6 @@ async function connectXtream(opts){
     }
   }
   
-  // Si llegamos aquí, ningún servidor funcionó
   loading.style.display = 'none';
   errBox.textContent = 'Error: No se pudo conectar con ningún servidor. Verifica tus credenciales.';
   errBox.style.display = 'block';
@@ -1202,7 +1175,7 @@ function buildCategoriesFromChannels(channels){
   return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({id:name, name, count:map[name]}));
 }
 
-// ===== HISTORIAL: guardar y mostrar =====
+// ===== HISTORIAL =====
 function renderHistoryView(main) {
   const history = loadHistory();
   let html = `<div class="grid-header"><h2>📜 Historial</h2><span class="grid-count">${history.length} elementos</span></div>`;
@@ -1221,7 +1194,6 @@ function renderHistoryView(main) {
     html += `<div style="margin-top:18px;text-align:center;"><button class="btn-ghost" id="clear-history-btn" style="width:auto;padding:10px 24px;">🗑 Eliminar todo el historial</button></div>`;
   }
   main.innerHTML = html;
-  // Event listeners para los elementos del historial
   $$('.series-row').forEach(el => {
     makeActivatable(el, ()=>{
       const idx = parseInt(el.dataset.idx);
@@ -1240,22 +1212,16 @@ let backPressCount = 0;
 let backPressTimer = null;
 
 function handleBackPress() {
-  // Si hay un temporizador, lo cancelamos y contamos como segundo toque
   if (backPressTimer) {
     clearTimeout(backPressTimer);
     backPressTimer = null;
-    // Segundo toque: preguntar si quiere salir
     if (confirm('¿Estás seguro de que quieres salir de la aplicación?')) {
-      // Salir
       if (window.close) window.close();
       window.location.href = 'about:blank';
     }
     return;
   }
-  // Primer toque
   backPressCount++;
-  // Mostrar un mensaje sutil (puede ser un toast en lugar de alert, pero usamos alert por simplicidad)
-  // Usamos un alert que desaparece rápido (un toast sería mejor, pero para mantener simplicidad)
   alert('Presiona atrás otra vez para salir');
   backPressTimer = setTimeout(() => {
     backPressCount = 0;
@@ -1263,7 +1229,6 @@ function handleBackPress() {
   }, 2000);
 }
 
-// Restaura el estado desde el historial al hacer 'back' o 'forward'
 window.addEventListener('popstate', function(event) {
   const stateData = event.state;
   if (stateData) {
@@ -1284,12 +1249,11 @@ window.addEventListener('popstate', function(event) {
   }
 });
 
-// ===== MANEJO DE TODOS LOS BOTONES DEL MANDO (versión mejorada) =====
+// ===== MANEJO DE BOTONES DEL MANDO (optimizado) =====
 document.addEventListener('keydown', function(e) {
   const key = e.key;
   const keyCode = e.keyCode || e.which;
   
-  // Si hay un overlay de reproducción HTML5 visible, controlar el video
   const playerOverlay = document.getElementById('player-overlay');
   const video = document.getElementById('video');
   const isBackKey = (
@@ -1300,13 +1264,11 @@ document.addEventListener('keydown', function(e) {
   );
 
   if (playerOverlay && playerOverlay.classList.contains('show') && video) {
-    // Tecla OK (Enter) o Play/Pause -> toggle play/pause
     if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66 || key === 'MediaPlayPause' || keyCode === 85) {
       e.preventDefault();
       if (video.paused) video.play(); else video.pause();
       return;
     }
-    // Teclas de avance/retroceso
     if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22 || key === 'MediaNextTrack' || keyCode === 87) {
       e.preventDefault();
       video.currentTime += 10;
@@ -1330,7 +1292,6 @@ document.addEventListener('keydown', function(e) {
     return;
   }
   
-  // Si el modal de listas está abierto
   if ($('#my-lists-modal').classList.contains('show')) {
     if (isBackKey) {
       e.preventDefault();
@@ -1340,7 +1301,6 @@ document.addEventListener('keydown', function(e) {
     return;
   }
   
-  // ===== NAVEGACIÓN PRINCIPAL CON D-PAD (navegación espacial) =====
   if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
     e.preventDefault();
     navigateFocus('up');
@@ -1396,7 +1356,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// Navegación espacial
+// Navegación espacial optimizada
 function navigateFocus(direction) {
   const focusables = Array.from(document.querySelectorAll('[tabindex="0"]:not([tabindex="-1"])'))
     .filter(el => {
@@ -1419,8 +1379,8 @@ function navigateFocus(direction) {
 
   let best = null;
   let bestScore = Infinity;
-  focusables.forEach(el => {
-    if (el === current) return;
+  for (const el of focusables) {
+    if (el === current) continue;
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
@@ -1431,10 +1391,10 @@ function navigateFocus(direction) {
     else if (direction === 'down') { valid = dy > 1; primary = dy; cross = Math.abs(dx); }
     else if (direction === 'left') { valid = dx < -1; primary = -dx; cross = Math.abs(dy); }
     else { valid = dx > 1; primary = dx; cross = Math.abs(dy); }
-    if (!valid) return;
+    if (!valid) continue;
     const score = cross * 3 + primary;
     if (score < bestScore) { bestScore = score; best = el; }
-  });
+  }
 
   if (best) {
     best.focus();
@@ -1461,7 +1421,6 @@ function launchApp(){
     closeSidebar();
     pushHistoryState();
   };
-  // Añadir pestañas: Live, Movies, Series, Historial
   const tabs = [
     ['live','TV en vivo'],
     ['vod','Películas'],
@@ -1502,7 +1461,6 @@ function currentCategories(){
 }
 function renderSidebar(){
   const sb = $('#sidebar');
-  // Si estamos en historial, no mostramos categorías
   if (state.activeType === 'history') {
     sb.innerHTML = `<div class="sb-title">Historial</div><div class="cat-item active" data-cat="all"><span>📜 Todos</span></div>`;
     return;
@@ -1527,7 +1485,6 @@ function renderMain(){
   const main = $('#main');
   const query = $('#search-input').value.trim().toLowerCase();
   
-  // Si estamos en la pestaña de historial
   if (state.activeType === 'history') {
     renderHistoryView(main);
     return;
@@ -1604,7 +1561,6 @@ function openInExternalPlayer(url, title){
   else { window.open(url, '_blank'); }
 }
 function playStream(url, title){
-  // Guardar en historial antes de reproducir
   addToHistory(title, url);
   
   if(window.AndroidBridge && typeof window.AndroidBridge.playNative === 'function'){ window.AndroidBridge.playNative(url, title); return; }
