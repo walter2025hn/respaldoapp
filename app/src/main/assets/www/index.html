@@ -570,6 +570,43 @@ body {
   color:var(--accent);
   background:rgba(245,166,35,0.25);
 }
+.fav-badge-row {
+  flex-shrink:0;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,0.06);
+  color:var(--text-secondary);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:15px;
+  line-height:1;
+  cursor:pointer;
+  transition:transform 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+.fav-badge-row:hover, .fav-badge-row:focus {
+  transform:scale(1.12);
+  background:rgba(245,166,35,0.85);
+  color:#0A0D10;
+  outline:none;
+}
+.fav-badge-row.active {
+  color:var(--accent);
+  background:rgba(245,166,35,0.18);
+}
+.chan-logo-wrap img {
+  opacity:0;
+  transition:opacity 0.25s ease;
+}
+.chan-logo-wrap img.loaded {
+  opacity:1;
+}
+.chan-card {
+  content-visibility:auto;
+  contain-intrinsic-size:200px 240px;
+}
 
 .series-list { display:flex; flex-direction:column; gap:8px; }
 .series-row {
@@ -915,6 +952,26 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
 }
 .continue-watching-section .grid-header {
   margin-bottom: 10px;
+}
+.fav-section {
+  margin-top: 22px;
+}
+.fav-section:first-of-type {
+  margin-top: 4px;
+}
+.fav-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+.fav-section-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text-primary);
 }
 .continue-item {
   display: flex;
@@ -1528,9 +1585,9 @@ function renderFavoritesView(main) {
   }
   
   const groups = {
-    channel: { label: '📺 Canales', items: [] },
-    vod: { label: '🎬 Películas', items: [] },
-    series: { label: '📺 Series', items: [] }
+    channel: { label: '📡 Canales', plain: 'Canal', items: [] },
+    vod: { label: '🎬 Películas', plain: 'Película', items: [] },
+    series: { label: '🎞️ Series', plain: 'Serie', items: [] }
   };
   favs.forEach(f => {
     if (groups[f.type]) groups[f.type].items.push(f);
@@ -1539,11 +1596,11 @@ function renderFavoritesView(main) {
   Object.keys(groups).forEach(key => {
     const group = groups[key];
     if (group.items.length === 0) return;
-    html += `<div style="margin-top:16px;"><div class="sb-title" style="padding-left:0;">${group.label}</div><div class="series-list">`;
+    html += `<div class="fav-section"><div class="fav-section-header"><h3>${group.label}</h3><span class="grid-count">${group.items.length}</span></div><div class="series-list">`;
     group.items.forEach(item => {
       html += `<div class="series-row" data-id="${escapeAttr(item.id)}" data-type="${escapeAttr(item.type)}">
         <div style="width:48px;height:68px;background:var(--bg-primary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);overflow:hidden;">${item.logo ? `<img loading="lazy" src="${escapeAttr(item.logo)}" decoding="async" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : '⭐'}</div>
-        <div class="info"><div class="t">${escapeHtml(item.title)}</div><div class="g">${group.label.replace('📺 ','').replace('🎬 ','')}</div></div>
+        <div class="info"><div class="t">${escapeHtml(item.title)}</div><div class="g">${group.plain}</div></div>
         <span style="color:var(--text-muted);font-size:11px;">▶</span>
       </div>`;
     });
@@ -1556,8 +1613,12 @@ function renderFavoritesView(main) {
       const type = el.dataset.type;
       const favs = loadFavorites();
       const item = favs.find(f => f.id === id && f.type === type);
-      if (item && item.url) {
+      if (!item) return;
+      if (item.url) {
         playStream(item.url, item.title);
+      } else if (item.type === 'series') {
+        const s = state.series.find(x => x.id === item.id);
+        if (s) { state.activeType = 'series'; state.viewingSeries = s; renderMain(); pushHistoryState(); }
       }
     });
   });
@@ -1753,22 +1814,43 @@ function navigateFocus(direction) {
   const curCy = curRect.top + curRect.height / 2;
 
   let best = null;
+  let bestGroup = 2;
   let bestScore = Infinity;
   for (const el of focusables) {
     if (el === current) continue;
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
-    const dx = cx - curCx;
-    const dy = cy - curCy;
-    let primary, cross, valid;
-    if (direction === 'up') { valid = dy < -1; primary = -dy; cross = Math.abs(dx); }
-    else if (direction === 'down') { valid = dy > 1; primary = dy; cross = Math.abs(dx); }
-    else if (direction === 'left') { valid = dx < -1; primary = -dx; cross = Math.abs(dy); }
-    else { valid = dx > 1; primary = dx; cross = Math.abs(dy); }
+    let primary, cross, valid, overlap;
+    if (direction === 'up') {
+      valid = r.bottom <= curRect.top + 1;
+      primary = curCy - cy;
+      cross = Math.abs(cx - curCx);
+      overlap = Math.min(r.right, curRect.right) - Math.max(r.left, curRect.left);
+    } else if (direction === 'down') {
+      valid = r.top >= curRect.bottom - 1;
+      primary = cy - curCy;
+      cross = Math.abs(cx - curCx);
+      overlap = Math.min(r.right, curRect.right) - Math.max(r.left, curRect.left);
+    } else if (direction === 'left') {
+      valid = r.right <= curRect.left + 1;
+      primary = curCx - cx;
+      cross = Math.abs(cy - curCy);
+      overlap = Math.min(r.bottom, curRect.bottom) - Math.max(r.top, curRect.top);
+    } else {
+      valid = r.left >= curRect.right - 1;
+      primary = cx - curCx;
+      cross = Math.abs(cy - curCy);
+      overlap = Math.min(r.bottom, curRect.bottom) - Math.max(r.top, curRect.top);
+    }
     if (!valid) continue;
+    const group = overlap > 0 ? 0 : 1;
     const score = cross * 3 + primary;
-    if (score < bestScore) { bestScore = score; best = el; }
+    if (group < bestGroup || (group === bestGroup && score < bestScore)) {
+      bestGroup = group;
+      bestScore = score;
+      best = el;
+    }
   }
 
   if (best) {
@@ -2140,11 +2222,27 @@ function renderMain(){
   const hasMore = data.length > limit;
   if(state.activeType === 'series'){
     html += `<div class="series-list">`;
-    visible.forEach((s, idx)=>{ html += `<div class="series-row" data-idx="${idx}">${s.logo ? `<img loading="lazy" src="${escapeAttr(s.logo)}" decoding="async" onerror="this.style.display='none'">` : `<div style="width:48px;height:68px;background:var(--bg-primary);border-radius:6px;"></div>`}<div class="info"><div class="t">${escapeHtml(s.name)}</div><div class="g">${escapeHtml(s.group)}</div></div><span style="color:var(--text-muted);">▸</span></div>`; });
+    visible.forEach((s, idx)=>{
+      const favActive = isFavorite({ id: s.id, type: s.type });
+      html += `<div class="series-row" data-idx="${idx}">${s.logo ? `<img loading="lazy" src="${escapeAttr(s.logo)}" decoding="async" onerror="this.style.display='none'">` : `<div style="width:48px;height:68px;background:var(--bg-primary);border-radius:6px;"></div>`}<div class="info"><div class="t">${escapeHtml(s.name)}</div><div class="g">${escapeHtml(s.group)}</div></div><button type="button" class="fav-badge-row${favActive ? ' active' : ''}" data-fav-id="${escapeAttr(s.id)}" data-fav-type="${escapeAttr(s.type)}" aria-label="Añadir a favoritos">${favActive ? '⭐' : '☆'}</button><span style="color:var(--text-muted);">▸</span></div>`;
+    });
     html += `</div>`;
     if(hasMore) html += `<div style="text-align:center;margin-top:18px;"><button class="btn-ghost" id="load-more-btn">Cargar más (${limit} de ${data.length})</button></div>`;
     main.innerHTML = html;
     $$('.series-row').forEach(el=>{ makeActivatable(el, ()=>{ const s = visible[parseInt(el.dataset.idx)]; state.viewingSeries = s; renderMain(); pushHistoryState(); }); });
+    $$('.fav-badge-row').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.favId;
+        const type = btn.dataset.favType;
+        const s = visible.find(x => x.id === id && x.type === type);
+        if(!s) return;
+        toggleFavorite({ id: s.id, type: s.type, title: s.name, url: s.url, logo: s.logo });
+        const nowFav = isFavorite({ id: s.id, type: s.type });
+        btn.classList.toggle('active', nowFav);
+        btn.textContent = nowFav ? '⭐' : '☆';
+      });
+    });
     const moreBtn = $('#load-more-btn');
     if(moreBtn) moreBtn.addEventListener('click', ()=>{ state.renderLimit = limit + 60; renderMain(); });
     // Vincular "Continuar viendo" items
@@ -2165,11 +2263,11 @@ function renderMain(){
   html += `<div class="channel-grid${isPosterView ? ' poster-grid' : ''}">`;
   visible.forEach((c, idx)=>{
     const posterNameHtml = isPosterView ? `<div class="chan-name">${escapeHtml(c.name)}</div>` : '';
-    const favActive = isPosterView && isFavorite({ id: c.id, type: c.type });
-    const favBadgeHtml = isPosterView ? `<button type="button" class="fav-badge${favActive ? ' active' : ''}" data-fav-id="${escapeAttr(c.id)}" data-fav-type="${escapeAttr(c.type)}" aria-label="Añadir a favoritos" tabindex="0">${favActive ? '⭐' : '☆'}</button>` : '';
+    const favActive = isFavorite({ id: c.id, type: c.type });
+    const favBadgeHtml = `<button type="button" class="fav-badge${favActive ? ' active' : ''}" data-fav-id="${escapeAttr(c.id)}" data-fav-type="${escapeAttr(c.type)}" aria-label="Añadir a favoritos">${favActive ? '⭐' : '☆'}</button>`;
     html += `<div class="chan-card${isPosterView ? ' poster' : ''}" data-idx="${idx}">
       <div class="chan-logo-wrap">
-        ${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" decoding="async" onerror="this.outerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}
+        ${c.logo ? `<img loading="lazy" src="${escapeAttr(c.logo)}" decoding="async" onload="this.classList.add('loaded')" onerror="this.outerHTML='<div class=&quot;chan-logo-fallback&quot;>${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>'">` : `<div class="chan-logo-fallback">${escapeHtml((c.name||'?').slice(0,2).toUpperCase())}</div>`}
         ${favBadgeHtml}
         ${posterNameHtml}
       </div>
@@ -2192,14 +2290,6 @@ function renderMain(){
       const nowFav = isFavorite({ id: c.id, type: c.type });
       btn.classList.toggle('active', nowFav);
       btn.textContent = nowFav ? '⭐' : '☆';
-    });
-    btn.addEventListener('keydown', (e)=>{
-      e.stopPropagation();
-      const kc = e.keyCode || e.which;
-      if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
-        e.preventDefault();
-        btn.click();
-      }
     });
   });
   const moreBtn = $('#load-more-btn');
