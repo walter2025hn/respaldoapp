@@ -1780,38 +1780,47 @@ function createPlayerControls(hls, playerBox) {
   resTitle.textContent = 'Resolución';
   resSection.appendChild(resTitle);
 
-  // Opción Automático
-  const autoBtn = document.createElement('button');
-  autoBtn.textContent = 'Automático';
-  autoBtn.dataset.level = '-1';
-  autoBtn.setAttribute('role', 'menuitem');
-  if (hls.currentLevel === -1) autoBtn.classList.add('active-quality');
-  autoBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    hls.currentLevel = -1;
-    updateMenuActive(menu, 'level', -1);
-    closeMenu();
-  });
-  autoBtn.addEventListener('keydown', handleMenuKeydown);
-  resSection.appendChild(autoBtn);
-
-  // Opciones de niveles
-  hls.levels.forEach((level, index) => {
-    const label = level.height ? `${level.height}p` : `Nivel ${index}`;
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.dataset.level = index;
-    btn.setAttribute('role', 'menuitem');
-    if (hls.currentLevel === index) btn.classList.add('active-quality');
-    btn.addEventListener('click', (e) => {
+  if (hls && hls.levels && hls.levels.length > 0) {
+    // Opción Automático
+    const autoBtn = document.createElement('button');
+    autoBtn.textContent = 'Automático';
+    autoBtn.dataset.level = '-1';
+    autoBtn.setAttribute('role', 'menuitem');
+    if (hls.currentLevel === -1) autoBtn.classList.add('active-quality');
+    autoBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      hls.currentLevel = index;
-      updateMenuActive(menu, 'level', index);
+      hls.currentLevel = -1;
+      updateMenuActive(menu, 'level', -1);
       closeMenu();
     });
-    btn.addEventListener('keydown', handleMenuKeydown);
-    resSection.appendChild(btn);
-  });
+    autoBtn.addEventListener('keydown', handleMenuKeydown);
+    resSection.appendChild(autoBtn);
+
+    // Opciones de niveles
+    hls.levels.forEach((level, index) => {
+      const label = level.height ? `${level.height}p` : `Nivel ${index}`;
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      btn.dataset.level = index;
+      btn.setAttribute('role', 'menuitem');
+      if (hls.currentLevel === index) btn.classList.add('active-quality');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hls.currentLevel = index;
+        updateMenuActive(menu, 'level', index);
+        closeMenu();
+      });
+      btn.addEventListener('keydown', handleMenuKeydown);
+      resSection.appendChild(btn);
+    });
+  } else {
+    const infoBtn = document.createElement('button');
+    infoBtn.textContent = 'No disponible';
+    infoBtn.disabled = true;
+    infoBtn.style.opacity = '0.5';
+    infoBtn.style.cursor = 'default';
+    resSection.appendChild(infoBtn);
+  }
 
   menu.appendChild(resSection);
 
@@ -2339,6 +2348,10 @@ function playStream(url, title, resumeTime = 0, item = null){
       status.textContent = 'Reproduciendo'; 
       if (resumeTime > 0) {
         video.currentTime = resumeTime;
+      }
+      const playerBox = document.querySelector('.player-box');
+      if (playerBox) {
+        createPlayerControls(null, playerBox);
       }
       startContinueWatching();
     }, {once:true});
