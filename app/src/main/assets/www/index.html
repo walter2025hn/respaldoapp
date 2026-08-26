@@ -1206,7 +1206,7 @@ window.addEventListener('popstate', function(event) {
   }
 });
 
-// ===== MANEJO DE TODOS LOS BOTONES DEL MANDO (con navegación mejorada) =====
+// ===== MANEJO DE TODOS LOS BOTONES DEL MANDO (versión mejorada) =====
 document.addEventListener('keydown', function(e) {
   const key = e.key;
   const keyCode = e.keyCode || e.which;
@@ -1216,27 +1216,24 @@ document.addEventListener('keydown', function(e) {
   const video = document.getElementById('video');
   if (playerOverlay && playerOverlay.classList.contains('show') && video) {
     // Tecla OK (Enter) o Play/Pause -> toggle play/pause
-    if (key === 'Enter' || keyCode === 13 || key === 'MediaPlayPause' || keyCode === 85) {
+    if (key === 'Enter' || keyCode === 13 || key === 'MediaPlayPause' || keyCode === 85 || keyCode === 23) {
       e.preventDefault();
       if (video.paused) video.play(); else video.pause();
       return;
     }
     // Teclas de avance/retroceso (flechas derecha/izquierda o media next/prev)
-    if (key === 'ArrowRight' || keyCode === 39 || key === 'MediaNextTrack' || keyCode === 87) {
+    if (key === 'ArrowRight' || keyCode === 39 || key === 'MediaNextTrack' || keyCode === 87 || keyCode === 22) {
       e.preventDefault();
       video.currentTime += 10;
       return;
     }
-    if (key === 'ArrowLeft' || keyCode === 37 || key === 'MediaPreviousTrack' || keyCode === 88) {
+    if (key === 'ArrowLeft' || keyCode === 37 || key === 'MediaPreviousTrack' || keyCode === 88 || keyCode === 21) {
       e.preventDefault();
       video.currentTime -= 10;
       return;
     }
-    // Tecla de volumen no la interceptamos, la dejamos al sistema.
     // Tecla de cerrar (Esc o Back) ya la maneja el botón de cerrar.
     if (key === 'Escape' || keyCode === 27 || key === 'Back' || keyCode === 4) {
-      // Si el overlay de reproducción está visible, el botón back lo cierra.
-      // Pero ya tenemos el evento popstate que maneja el back.
       // Dejamos que el popstate lo maneje.
       return;
     }
@@ -1246,10 +1243,63 @@ document.addEventListener('keydown', function(e) {
       closePlayer();
       return;
     }
+    // Si se pulsa cualquier tecla de dirección mientras el video está activo, no hacer nada más (ya se manejaron arriba)
+    return;
   }
   
-  // Si el modal de listas está abierto, el back lo cierra (ya manejado por el modal)
-  // Si no, manejar navegación general.
+  // Si el modal de listas está abierto
+  if ($('#my-lists-modal').classList.contains('show')) {
+    // Si se pulsa Back o Escape, cerrar modal (ya lo maneja el modal)
+    if (key === 'Escape' || keyCode === 27 || key === 'Back' || keyCode === 4) {
+      // No hacer nada, el modal tiene su propio manejador para el fondo y el botón cerrar.
+      // Pero el popstate también lo maneja. Dejamos que el sistema decida.
+      return;
+    }
+    // Otras teclas las dejamos para navegar dentro del modal
+    return;
+  }
+  
+  // ===== NAVEGACIÓN PRINCIPAL CON D-PAD =====
+  // Arriba (códigos 19 y 38)
+  if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
+    e.preventDefault();
+    navigateFocus(-1);
+    return;
+  }
+  // Abajo (códigos 20 y 40)
+  if (key === 'ArrowDown' || keyCode === 40 || keyCode === 20) {
+    e.preventDefault();
+    navigateFocus(1);
+    return;
+  }
+  // Izquierda (códigos 21 y 37)
+  if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21) {
+    // La navegación horizontal la dejamos al comportamiento nativo o la manejamos si queremos.
+    // Por ahora, no la interceptamos para que el foco se mueva naturalmente (ya funciona).
+    // Devolvemos true para evitar que se propague, pero no hacemos nada extra.
+    e.preventDefault();
+    // Podríamos implementar navegación horizontal entre elementos si lo deseamos.
+    // Por simplicidad, dejamos que el navegador maneje el foco con tabindex.
+    // Pero como no queremos interferir, simplemente prevenimos el comportamiento por defecto y salimos.
+    // Realmente no necesitamos hacer nada, el foco ya se mueve con las flechas.
+    return;
+  }
+  // Derecha (códigos 22 y 39)
+  if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22) {
+    e.preventDefault();
+    return;
+  }
+  
+  // OK / Enter / DPAD_CENTER (código 23)
+  if (key === 'Enter' || keyCode === 13 || keyCode === 23) {
+    // Si hay un elemento con foco, se activa su evento click automáticamente.
+    // No necesitamos hacer nada especial, el navegador ya dispara el click en Enter.
+    // Pero prevenimos el comportamiento por defecto para evitar dobles acciones.
+    e.preventDefault();
+    // Si el elemento con foco tiene un evento click, se ejecutará.
+    // Si no, no pasa nada.
+    return;
+  }
   
   // Tecla Menu global -> abrir modal de listas (si no está visible ya)
   if ((key === 'Menu' || keyCode === 82) && !$('#my-lists-modal').classList.contains('show')) {
@@ -1264,29 +1314,6 @@ document.addEventListener('keydown', function(e) {
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.focus();
     return;
-  }
-  
-  // ===== NAVEGACIÓN CON FLECHAS ARRIBA/ABAJO (SOPORTE COMPLETO PARA TV) =====
-  // Códigos de tecla para D-pad en Android TV: 19=arriba, 20=abajo, 21=izquierda, 22=derecha
-  if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
-    e.preventDefault();
-    navigateFocus(-1);
-    return;
-  }
-  if (key === 'ArrowDown' || keyCode === 40 || keyCode === 20) {
-    e.preventDefault();
-    navigateFocus(1);
-    return;
-  }
-  // También para izquierda/derecha (por si acaso)
-  if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21) {
-    // La navegación horizontal la dejamos al comportamiento nativo o la manejamos si queremos.
-    // Por ahora, no la interceptamos para que el foco se mueva naturalmente (ya funciona).
-    // Podemos agregarla para consistencia, pero no es necesario.
-    // e.preventDefault(); navigateHorizontal(-1);
-  }
-  if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22) {
-    // Similar.
   }
   
   // Si no hay foco en ningún elemento interactivo, forzar foco en el primer elemento.
