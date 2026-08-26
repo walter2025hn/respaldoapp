@@ -920,8 +920,42 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 
 // ===== PERSISTENCE =====
 const PROFILES_KEY = 'codigomaster_profiles';
+const HISTORY_KEY = 'codigomaster_history';
+
 function loadProfiles(){ try{ return JSON.parse(localStorage.getItem(PROFILES_KEY)) || []; }catch(e){ return []; } }
 function saveProfiles(list){ try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); }catch(e){} }
+
+function loadHistory(){ try{ return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }catch(e){ return []; } }
+function saveHistory(list){ try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }catch(e){} }
+
+function addToHistory(title, url) {
+  if (!title || !url) return;
+  const history = loadHistory();
+  // Evitar duplicados exactos (mismo título y url)
+  const exists = history.some(item => item.title === title && item.url === url);
+  if (!exists) {
+    history.unshift({ title, url, timestamp: Date.now() });
+    // Limitar a 100 elementos para no saturar localStorage
+    if (history.length > 100) history.pop();
+    saveHistory(history);
+  } else {
+    // Mover al principio si ya existe (actualizar timestamp)
+    const idx = history.findIndex(item => item.title === title && item.url === url);
+    if (idx > 0) {
+      const item = history.splice(idx, 1)[0];
+      item.timestamp = Date.now();
+      history.unshift(item);
+      saveHistory(history);
+    }
+  }
+}
+
+function clearHistory() {
+  if (confirm('¿Eliminar todo el historial de reproducción?')) {
+    saveHistory([]);
+    renderMain();
+  }
+}
 
 function profileKeyOf(p){
   return 'xtream:' + p.xtream.server + ':' + p.xtream.user;
@@ -998,7 +1032,7 @@ $('#sidebar-scrim').addEventListener('click', ()=>{ $('#sidebar').classList.remo
 $('#x-load-btn').addEventListener('click', ()=> connectXtream());
 $('#disconnect-btn').addEventListener('click', disconnectApp);
 $('#player-close').addEventListener('click', closePlayer);
-$('#player-close').addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closePlayer(); } });
+$('#player-close').addEventListener('keydown', function(e){ const kc = e.keyCode || e.which; if(e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) { e.preventDefault(); closePlayer(); } });
 
 // ===== HELPERS =====
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -1007,7 +1041,14 @@ function makeActivatable(el, handler){
   el.setAttribute('tabindex','0');
   el.setAttribute('role','button');
   el.addEventListener('click', handler);
-  el.addEventListener('keydown', e=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); } });
+  el.addEventListener('keydown', e=>{
+    const kc = e.keyCode || e.which;
+    if (e.key === 'Enter' || e.key === ' ' || kc === 13 || kc === 23 || kc === 32 || kc === 66) {
+      e.preventDefault();
+      e.stopPropagation();
+      handler();
+    }
+  });
 }
 function closeSidebar(){ $('#sidebar').classList.remove('open'); $('#sidebar-scrim').classList.remove('show'); }
 
@@ -1161,7 +1202,40 @@ function buildCategoriesFromChannels(channels){
   return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({id:name, name, count:map[name]}));
 }
 
-// ===== NAVEGACIÓN CON HISTORIAL Y DOBLE TOQUE ATRÁS =====
+// ===== HISTORIAL: guardar y mostrar =====
+function renderHistoryView(main) {
+  const history = loadHistory();
+  let html = `<div class="grid-header"><h2>📜 Historial</h2><span class="grid-count">${history.length} elementos</span></div>`;
+  if (history.length === 0) {
+    html += `<div class="empty-state"><div style="font-size:36px;">📭</div><div>No hay elementos en el historial</div><div class="big">Las películas y series que veas aparecerán aquí</div></div>`;
+  } else {
+    html += `<div class="series-list">`;
+    history.forEach((item, idx) => {
+      html += `<div class="series-row" data-idx="${idx}">
+        <div style="width:48px;height:68px;background:var(--bg-primary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);">▶</div>
+        <div class="info"><div class="t">${escapeHtml(item.title)}</div><div class="g">${new Date(item.timestamp).toLocaleDateString('es-ES')}</div></div>
+        <span style="color:var(--text-muted);font-size:11px;">↻</span>
+      </div>`;
+    });
+    html += `</div>`;
+    html += `<div style="margin-top:18px;text-align:center;"><button class="btn-ghost" id="clear-history-btn" style="width:auto;padding:10px 24px;">🗑 Eliminar todo el historial</button></div>`;
+  }
+  main.innerHTML = html;
+  // Event listeners para los elementos del historial
+  $$('.series-row').forEach(el => {
+    makeActivatable(el, ()=>{
+      const idx = parseInt(el.dataset.idx);
+      const item = loadHistory()[idx];
+      if (item && item.url) {
+        playStream(item.url, item.title);
+      }
+    });
+  });
+  const clearBtn = document.getElementById('clear-history-btn');
+  if (clearBtn) clearBtn.addEventListener('click', clearHistory);
+}
+
+// ===== NAVEGACIÓN CON HISTORIAL Y DOBLE TOQUE ATRÁS (con confirm) =====
 let backPressCount = 0;
 let backPressTimer = null;
 
@@ -1170,14 +1244,18 @@ function handleBackPress() {
   if (backPressTimer) {
     clearTimeout(backPressTimer);
     backPressTimer = null;
-    // Segundo toque: salir
-    alert('Saliendo de la aplicación...');
-    if (window.close) window.close();
-    window.location.href = 'about:blank';
+    // Segundo toque: preguntar si quiere salir
+    if (confirm('¿Estás seguro de que quieres salir de la aplicación?')) {
+      // Salir
+      if (window.close) window.close();
+      window.location.href = 'about:blank';
+    }
     return;
   }
   // Primer toque
   backPressCount++;
+  // Mostrar un mensaje sutil (puede ser un toast en lugar de alert, pero usamos alert por simplicidad)
+  // Usamos un alert que desaparece rápido (un toast sería mejor, pero para mantener simplicidad)
   alert('Presiona atrás otra vez para salir');
   backPressTimer = setTimeout(() => {
     backPressCount = 0;
@@ -1214,101 +1292,97 @@ document.addEventListener('keydown', function(e) {
   // Si hay un overlay de reproducción HTML5 visible, controlar el video
   const playerOverlay = document.getElementById('player-overlay');
   const video = document.getElementById('video');
+  const isBackKey = (
+    key === 'Escape' || key === 'Back' || key === 'GoBack' || key === 'BrowserBack' ||
+    key === 'Exit' || key === 'XF86Back' ||
+    keyCode === 27 || keyCode === 4 || keyCode === 8 ||
+    keyCode === 166 || keyCode === 10009 || keyCode === 461
+  );
+
   if (playerOverlay && playerOverlay.classList.contains('show') && video) {
     // Tecla OK (Enter) o Play/Pause -> toggle play/pause
-    if (key === 'Enter' || keyCode === 13 || key === 'MediaPlayPause' || keyCode === 85 || keyCode === 23) {
+    if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66 || key === 'MediaPlayPause' || keyCode === 85) {
       e.preventDefault();
       if (video.paused) video.play(); else video.pause();
       return;
     }
-    // Teclas de avance/retroceso (flechas derecha/izquierda o media next/prev)
-    if (key === 'ArrowRight' || keyCode === 39 || key === 'MediaNextTrack' || keyCode === 87 || keyCode === 22) {
+    // Teclas de avance/retroceso
+    if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22 || key === 'MediaNextTrack' || keyCode === 87) {
       e.preventDefault();
       video.currentTime += 10;
       return;
     }
-    if (key === 'ArrowLeft' || keyCode === 37 || key === 'MediaPreviousTrack' || keyCode === 88 || keyCode === 21) {
+    if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21 || key === 'MediaPreviousTrack' || keyCode === 88) {
       e.preventDefault();
       video.currentTime -= 10;
       return;
     }
-    // Tecla de cerrar (Esc o Back) ya la maneja el botón de cerrar.
-    if (key === 'Escape' || keyCode === 27 || key === 'Back' || keyCode === 4) {
-      // Dejamos que el popstate lo maneje.
+    if (isBackKey) {
+      e.preventDefault();
+      closePlayer();
       return;
     }
-    // Tecla Menu: cerrar el reproductor
     if (key === 'Menu' || keyCode === 82) {
       e.preventDefault();
       closePlayer();
       return;
     }
-    // Si se pulsa cualquier tecla de dirección mientras el video está activo, no hacer nada más (ya se manejaron arriba)
     return;
   }
   
   // Si el modal de listas está abierto
   if ($('#my-lists-modal').classList.contains('show')) {
-    // Si se pulsa Back o Escape, cerrar modal (ya lo maneja el modal)
-    if (key === 'Escape' || keyCode === 27 || key === 'Back' || keyCode === 4) {
-      // No hacer nada, el modal tiene su propio manejador para el fondo y el botón cerrar.
-      // Pero el popstate también lo maneja. Dejamos que el sistema decida.
+    if (isBackKey) {
+      e.preventDefault();
+      closeMyListsModal();
       return;
     }
-    // Otras teclas las dejamos para navegar dentro del modal
     return;
   }
   
-  // ===== NAVEGACIÓN PRINCIPAL CON D-PAD =====
-  // Arriba (códigos 19 y 38)
+  // ===== NAVEGACIÓN PRINCIPAL CON D-PAD (navegación espacial) =====
   if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
     e.preventDefault();
-    navigateFocus(-1);
+    navigateFocus('up');
     return;
   }
-  // Abajo (códigos 20 y 40)
   if (key === 'ArrowDown' || keyCode === 40 || keyCode === 20) {
     e.preventDefault();
-    navigateFocus(1);
+    navigateFocus('down');
     return;
   }
-  // Izquierda (códigos 21 y 37)
   if (key === 'ArrowLeft' || keyCode === 37 || keyCode === 21) {
-    // La navegación horizontal la dejamos al comportamiento nativo o la manejamos si queremos.
-    // Por ahora, no la interceptamos para que el foco se mueva naturalmente (ya funciona).
-    // Devolvemos true para evitar que se propague, pero no hacemos nada extra.
     e.preventDefault();
-    // Podríamos implementar navegación horizontal entre elementos si lo deseamos.
-    // Por simplicidad, dejamos que el navegador maneje el foco con tabindex.
-    // Pero como no queremos interferir, simplemente prevenimos el comportamiento por defecto y salimos.
-    // Realmente no necesitamos hacer nada, el foco ya se mueve con las flechas.
+    navigateFocus('left');
     return;
   }
-  // Derecha (códigos 22 y 39)
   if (key === 'ArrowRight' || keyCode === 39 || keyCode === 22) {
     e.preventDefault();
+    navigateFocus('right');
     return;
   }
   
-  // OK / Enter / DPAD_CENTER (código 23)
-  if (key === 'Enter' || keyCode === 13 || keyCode === 23) {
-    // Si hay un elemento con foco, se activa su evento click automáticamente.
-    // No necesitamos hacer nada especial, el navegador ya dispara el click en Enter.
-    // Pero prevenimos el comportamiento por defecto para evitar dobles acciones.
+  if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66) {
     e.preventDefault();
-    // Si el elemento con foco tiene un evento click, se ejecutará.
-    // Si no, no pasa nada.
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.click === 'function') {
+      active.click();
+    }
+    return;
+  }
+
+  if (isBackKey) {
+    e.preventDefault();
+    window.history.back();
     return;
   }
   
-  // Tecla Menu global -> abrir modal de listas (si no está visible ya)
   if ((key === 'Menu' || keyCode === 82) && !$('#my-lists-modal').classList.contains('show')) {
     e.preventDefault();
     openMyListsModal();
     return;
   }
   
-  // Tecla de búsqueda (si existe) enfocar el search
   if (key === 'Search' || keyCode === 84) {
     e.preventDefault();
     const searchInput = document.getElementById('search-input');
@@ -1316,29 +1390,55 @@ document.addEventListener('keydown', function(e) {
     return;
   }
   
-  // Si no hay foco en ningún elemento interactivo, forzar foco en el primer elemento.
   if (document.activeElement === document.body) {
     const firstFocusable = document.querySelector('[tabindex="0"]:not([tabindex="-1"])');
     if (firstFocusable) firstFocusable.focus();
   }
 });
 
-// Función para navegar entre elementos con tabindex (orden DOM)
+// Navegación espacial
 function navigateFocus(direction) {
-  const focusables = Array.from(document.querySelectorAll('[tabindex="0"]:not([tabindex="-1"])'));
+  const focusables = Array.from(document.querySelectorAll('[tabindex="0"]:not([tabindex="-1"])'))
+    .filter(el => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && el.offsetParent !== null;
+    });
   if (focusables.length === 0) return;
-  const currentIndex = focusables.indexOf(document.activeElement);
-  let nextIndex;
-  if (currentIndex === -1) {
-    // Si no hay foco, empezar por el primero o último según dirección
-    nextIndex = direction > 0 ? 0 : focusables.length - 1;
-  } else {
-    nextIndex = (currentIndex + direction + focusables.length) % focusables.length;
+
+  const current = document.activeElement;
+  if (!current || current === document.body || !focusables.includes(current)) {
+    const first = focusables[0];
+    first.focus();
+    first.scrollIntoView({ block: 'center', behavior: 'auto' });
+    return;
   }
-  const target = focusables[nextIndex];
-  if (target) {
-    target.focus();
-    target.scrollIntoView({ block: 'center', behavior: 'auto' });
+
+  const curRect = current.getBoundingClientRect();
+  const curCx = curRect.left + curRect.width / 2;
+  const curCy = curRect.top + curRect.height / 2;
+
+  let best = null;
+  let bestScore = Infinity;
+  focusables.forEach(el => {
+    if (el === current) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dx = cx - curCx;
+    const dy = cy - curCy;
+    let primary, cross, valid;
+    if (direction === 'up') { valid = dy < -1; primary = -dy; cross = Math.abs(dx); }
+    else if (direction === 'down') { valid = dy > 1; primary = dy; cross = Math.abs(dx); }
+    else if (direction === 'left') { valid = dx < -1; primary = -dx; cross = Math.abs(dy); }
+    else { valid = dx > 1; primary = dx; cross = Math.abs(dy); }
+    if (!valid) return;
+    const score = cross * 3 + primary;
+    if (score < bestScore) { bestScore = score; best = el; }
+  });
+
+  if (best) {
+    best.focus();
+    best.scrollIntoView({ block: 'center', behavior: 'auto' });
   }
 }
 
@@ -1361,7 +1461,14 @@ function launchApp(){
     closeSidebar();
     pushHistoryState();
   };
-  [['live','TV en vivo'], ['vod','Películas'], ['series','Series']].forEach(([key,label])=>{
+  // Añadir pestañas: Live, Movies, Series, Historial
+  const tabs = [
+    ['live','TV en vivo'],
+    ['vod','Películas'],
+    ['series','Series'],
+    ['history','📜 Historial']
+  ];
+  tabs.forEach(([key,label])=>{
     [tabsWrap, mobileTabsWrap].forEach(container=>{
       const b = document.createElement('button');
       b.className = 'top-tab' + (key===state.activeType ? ' active' : '');
@@ -1375,7 +1482,6 @@ function launchApp(){
   renderMain();
   $('#search-input').oninput = ()=>{ state.renderLimit = 60; renderMain(); };
   pushHistoryState();
-  // Enfocar el primer elemento interactivo (por ejemplo, el primer tab o categoría)
   setTimeout(() => {
     const firstFocusable = document.querySelector('.top-tab') || document.querySelector('.cat-item');
     if (firstFocusable) firstFocusable.focus();
@@ -1396,6 +1502,11 @@ function currentCategories(){
 }
 function renderSidebar(){
   const sb = $('#sidebar');
+  // Si estamos en historial, no mostramos categorías
+  if (state.activeType === 'history') {
+    sb.innerHTML = `<div class="sb-title">Historial</div><div class="cat-item active" data-cat="all"><span>📜 Todos</span></div>`;
+    return;
+  }
   const cats = currentCategories();
   const total = currentDataset().length;
   let html = `<div class="sb-title">Categorías</div>`;
@@ -1415,6 +1526,13 @@ function renderSidebar(){
 function renderMain(){
   const main = $('#main');
   const query = $('#search-input').value.trim().toLowerCase();
+  
+  // Si estamos en la pestaña de historial
+  if (state.activeType === 'history') {
+    renderHistoryView(main);
+    return;
+  }
+  
   if(state.activeType === 'series' && state.viewingSeries){ 
     renderSeriesDetail(main, state.viewingSeries); 
     return; 
@@ -1486,6 +1604,9 @@ function openInExternalPlayer(url, title){
   else { window.open(url, '_blank'); }
 }
 function playStream(url, title){
+  // Guardar en historial antes de reproducir
+  addToHistory(title, url);
+  
   if(window.AndroidBridge && typeof window.AndroidBridge.playNative === 'function'){ window.AndroidBridge.playNative(url, title); return; }
   $('#player-overlay').classList.add('show');
   $('#player-title-text').textContent = title;
