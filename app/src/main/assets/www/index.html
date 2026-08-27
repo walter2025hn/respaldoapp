@@ -9,18 +9,18 @@
 /* ===== RESET & BASE ===== */
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
-  --bg-primary: #0A0D10;
-  --bg-secondary: #12161C;
-  --bg-card: #1A2028;
-  --bg-card-hover: #232B34;
-  --text-primary: #F0F2F5;
-  --text-secondary: #8A94A6;
-  --text-muted: #5A6473;
+  --bg-primary: #000000;
+  --bg-secondary: #0B0B0D;
+  --bg-card: #161618;
+  --bg-card-hover: #1E1E20;
+  --text-primary: #F5F5F7;
+  --text-secondary: #98989D;
+  --text-muted: #6E6E73;
   --accent: #F5A623;
   --accent-dim: #7A5310;
-  --accent-bg: rgba(245,166,35,0.1);
-  --border-color: #2A323E;
-  --shadow: 0 8px 24px rgba(0,0,0,0.6);
+  --accent-bg: rgba(245,166,35,0.08);
+  --border-color: rgba(255,255,255,0.08);
+  --shadow: 0 2px 10px rgba(0,0,0,0.35);
   --radius: 12px;
   --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
@@ -35,10 +35,10 @@ body {
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-thumb { background:var(--border-color); border-radius:4px; }
 
-/* ===== FOCUS PARA TV (más visible, siempre redondeado según cada elemento) ===== */
+/* ===== FOCUS PARA TV (fino y sutil, sin sombras pesadas) ===== */
 *:focus { outline:none; }
 *:focus {
-  box-shadow: 0 0 0 4px var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent) !important;
 }
 
 /* ===== SELECCIÓN INSTANTÁNEA (sin animación, sin lag) ===== */
@@ -47,24 +47,25 @@ body {
 }
 .chan-card:hover, .chan-card:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px var(--accent), 0 12px 32px rgba(245,166,35,0.35) !important;
+  box-shadow: 0 0 0 2px var(--accent) !important;
 }
 .series-row:hover, .series-row:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent) !important;
 }
 .chan-card.poster:hover, .chan-card.poster:focus {
-  box-shadow: 0 0 0 4px var(--accent), 0 16px 40px rgba(245,166,35,0.4) !important;
+  box-shadow: 0 0 0 2px var(--accent) !important;
 }
 .cat-item:hover, .cat-item:focus {
-  box-shadow: inset 3px 0 0 var(--accent), 0 0 0 3px var(--accent) !important;
+  box-shadow: inset 2px 0 0 var(--accent) !important;
+  background: rgba(255,255,255,0.04) !important;
   border-radius: 8px;
 }
 .top-tab:hover, .top-tab:focus {
-  box-shadow: 0 0 0 3px var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent) !important;
 }
 .icon-btn:hover, .icon-btn:focus {
-  box-shadow: 0 0 0 3px var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent) !important;
 }
 
 /* ===== ANIMACIÓN DE ENTRADA (PÁGINA) ===== */
@@ -440,9 +441,9 @@ body {
   backface-visibility: hidden;
 }
 .chan-card:focus {
-  transform: scale(1.08) translateY(-4px);
+  transform: scale(1.03);
   border-color: var(--accent);
-  box-shadow: 0 12px 32px rgba(245,166,35,0.35);
+  box-shadow: 0 0 0 2px var(--accent);
   outline: none;
 }
 .chan-card.playing { border-color:var(--accent); background:var(--accent-bg); }
@@ -488,8 +489,8 @@ body {
   transition:transform 0.05s ease, box-shadow 0.05s ease;
 }
 .chan-card.poster:focus {
-  transform: scale(1.08);
-  box-shadow: 0 16px 40px rgba(245,166,35,0.4);
+  transform: scale(1.03);
+  box-shadow: 0 0 0 2px var(--accent);
   outline: none;
 }
 .chan-card.poster .chan-logo-wrap {
@@ -544,7 +545,7 @@ body {
   height:30px;
   border-radius:50%;
   border:none;
-  background:rgba(10,13,16,0.55);
+  background:rgba(0,0,0,0.55);
   backdrop-filter:blur(4px);
   display:flex;
   align-items:center;
@@ -612,8 +613,8 @@ body {
   transition:border-color 0.05s, transform 0.05s;
 }
 .series-row:focus {
-  transform: scale(1.04);
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
   outline: none;
 }
 .series-row img {
@@ -640,8 +641,8 @@ body {
   transition:border-color 0.05s, transform 0.05s;
 }
 .ep-row:focus {
-  transform: scale(1.04);
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
   outline: none;
 }
 .back-link {
@@ -863,9 +864,9 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   position: absolute;
   bottom: 80px;
   right: 14px;
-  background: #fff;
-  color: #0A0D10;
-  border: 1px solid #ccc;
+  background: rgba(28,28,30,0.85);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 16px;
@@ -873,20 +874,21 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   z-index: 60;
   font-weight: 600;
   font-family: var(--font);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  backdrop-filter: blur(6px);
 }
 .quality-btn:focus {
-  outline: 2px solid var(--accent);
+  outline: 1px solid var(--accent);
   outline-offset: 2px;
 }
 .quality-btn:hover {
-  background: #f0f0f0;
+  background: rgba(40,40,42,0.9);
 }
 .quality-menu {
   position: absolute;
   bottom: 120px;
   right: 14px;
-  background: rgba(10,13,16,0.95);
+  background: rgba(12,12,14,0.95);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 6px 0;
@@ -894,8 +896,8 @@ video { width:100%; display:block; max-height:70vh; background:#000; }
   z-index: 65;
   display: none;
   flex-direction: column;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  backdrop-filter: blur(6px);
 }
 .quality-menu.show {
   display: flex;
