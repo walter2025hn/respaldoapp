@@ -41,37 +41,29 @@ body {
   box-shadow: 0 0 0 4px var(--accent) !important;
 }
 
-/* ===== ANIMACIONES MEJORADAS (equilibrio velocidad/visibilidad) ===== */
+/* ===== SELECCIÓN INSTANTÁNEA (sin animación, sin lag) ===== */
 .chan-card, .series-row, .ep-row, .cat-item, .top-tab, .profile-card {
-  transition: transform 0.15s cubic-bezier(0.22,1,0.36,1), border-color 0.15s ease, box-shadow 0.15s ease !important;
-  will-change: transform;
-  backface-visibility: hidden;
+  transition: none !important;
 }
 .chan-card:hover, .chan-card:focus {
-  transform: scale(1.08) translateY(-4px) !important;
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 4px var(--accent), 0 12px 32px rgba(245,166,35,0.35) !important;
 }
 .series-row:hover, .series-row:focus {
-  transform: scale(1.04) !important;
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 4px var(--accent) !important;
 }
 .chan-card.poster:hover, .chan-card.poster:focus {
-  transform: scale(1.08) !important;
   box-shadow: 0 0 0 4px var(--accent), 0 16px 40px rgba(245,166,35,0.4) !important;
 }
 .cat-item:hover, .cat-item:focus {
-  transform: translateX(6px) !important;
   box-shadow: inset 3px 0 0 var(--accent), 0 0 0 3px var(--accent) !important;
   border-radius: 8px;
 }
 .top-tab:hover, .top-tab:focus {
-  transform: scale(1.06) !important;
   box-shadow: 0 0 0 3px var(--accent) !important;
 }
 .icon-btn:hover, .icon-btn:focus {
-  transform: scale(1.12) !important;
   box-shadow: 0 0 0 3px var(--accent) !important;
 }
 
@@ -2406,12 +2398,12 @@ function playStream(url, title, resumeTime = 0, item = null){
       maxBufferLength: 30,
       maxBufferSize: 30 * 1024 * 1024,
       liveDurationInfinity: true,
-      liveSyncDuration: 1.5,
-      liveSyncDurationCount: 2,
+      liveSyncDuration: 10,
+      liveMaxLatencyDuration: 20,
       backbufferLength: 20,
       recoverAttempts: 10,
       enableWorker: true,
-      lowLatencyMode: true,
+      lowLatencyMode: false,
       autoLevelCapping: -1,
       capLevelToPlayerSize: true,
       testBandwidth: false,
