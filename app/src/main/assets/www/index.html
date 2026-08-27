@@ -1673,24 +1673,55 @@ function ensureFocus() {
 }
 
 function setupKeyListeners() {
+  // Evita adjuntar el listener más de una vez si launchApp() se llama de nuevo
+  // (por ejemplo al reconectar), lo que causaría doble ejecución de cada tecla.
+  if (setupKeyListeners._attached) return;
+  setupKeyListeners._attached = true;
+
   const handler = function(e) {
-    const key = e.key;
+    let key = e.key;
     const keyCode = e.keyCode || e.which;
     const type = e.type;
     if (type !== 'keydown') return;
-    
-    const isBackKey = (
+
+    // Alias para navegadores de Smart TV antiguos (algunas versiones de Tizen/webOS
+    // reportan 'Up'/'Down'/'Left'/'Right' en vez del estándar 'ArrowUp' etc.)
+    const legacyDirMap = { Up:'ArrowUp', Down:'ArrowDown', Left:'ArrowLeft', Right:'ArrowRight' };
+    if (legacyDirMap[key]) key = legacyDirMap[key];
+
+    // Si el foco está en un campo de texto (buscador, usuario/contraseña, etc.),
+    // dejamos que el teclado/control funcione de forma nativa (Backspace, flechas
+    // para mover el cursor, Enter, etc.) y solo interceptamos la tecla física de
+    // Atrás/Exit del mando para poder salir del campo.
+    const activeEl = document.activeElement;
+    const activeTag = activeEl ? activeEl.tagName : '';
+    const isEditable = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (activeEl && activeEl.isContentEditable);
+
+    // Detección amplia de "Atrás/Exit" para cubrir mandos de TV box, Android TV,
+    // Samsung Tizen, LG webOS y teclados genéricos. Backspace (8) se excluye
+    // aparte más abajo para no romper la edición de texto.
+    const isBackKeyStrict = (
       key === 'Escape' || key === 'Back' || key === 'GoBack' || key === 'BrowserBack' ||
       key === 'Exit' || key === 'XF86Back' ||
-      keyCode === 27 || keyCode === 4 || keyCode === 8 || keyCode === 111 ||
-      keyCode === 166 || keyCode === 10009 || keyCode === 461
+      keyCode === 27 || keyCode === 4 || keyCode === 111 ||
+      keyCode === 166 || keyCode === 10009 || keyCode === 461 || keyCode === 10182
     );
-    
+    const isBackKey = isBackKeyStrict || (!isEditable && keyCode === 8);
+
+    if (isEditable) {
+      // Solo permitimos que la tecla física de Atrás/Exit saque el foco del campo.
+      if (isBackKeyStrict) {
+        e.preventDefault();
+        activeEl.blur();
+      }
+      return;
+    }
+
     const playerOverlay = document.getElementById('player-overlay');
     const video = document.getElementById('video');
-    
+
     if (playerOverlay && playerOverlay.classList.contains('show') && video) {
-      if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66 || key === 'MediaPlayPause' || keyCode === 85) {
+      if (key === 'Enter' || key === ' ' || key === 'OK' || key === 'Accept' || keyCode === 13 || keyCode === 23 || keyCode === 66 || keyCode === 32 || key === 'MediaPlayPause' || keyCode === 85) {
         e.preventDefault();
         if (video.paused) video.play(); else video.pause();
         return;
@@ -1717,7 +1748,7 @@ function setupKeyListeners() {
       }
       return;
     }
-    
+
     if ($('#my-lists-modal').classList.contains('show')) {
       if (isBackKey) {
         e.preventDefault();
@@ -1726,7 +1757,7 @@ function setupKeyListeners() {
       }
       return;
     }
-    
+
     if (key === 'ArrowUp' || keyCode === 38 || keyCode === 19) {
       e.preventDefault();
       navigateFocus('up');
@@ -1747,8 +1778,8 @@ function setupKeyListeners() {
       navigateFocus('right');
       return;
     }
-    
-    if (key === 'Enter' || keyCode === 13 || keyCode === 23 || keyCode === 66) {
+
+    if (key === 'Enter' || key === ' ' || key === 'OK' || key === 'Accept' || keyCode === 13 || keyCode === 23 || keyCode === 66 || keyCode === 32) {
       e.preventDefault();
       const active = document.activeElement;
       if (active && active !== document.body && typeof active.click === 'function') {
@@ -1756,33 +1787,34 @@ function setupKeyListeners() {
       }
       return;
     }
-    
+
     if (isBackKey) {
       e.preventDefault();
       window.history.back();
       return;
     }
-    
+
     if ((key === 'Menu' || keyCode === 82) && !$('#my-lists-modal').classList.contains('show')) {
       e.preventDefault();
       openMyListsModal();
       return;
     }
-    
+
     if (key === 'Search' || keyCode === 84) {
       e.preventDefault();
       const searchInput = document.getElementById('search-input');
       if (searchInput) searchInput.focus();
       return;
     }
-    
+
     if (document.activeElement === document.body) {
       ensureFocus();
     }
   };
-  
+
   document.addEventListener('keydown', handler);
   setInterval(ensureFocus, 2000);
+  startGamepadSupport();
 }
 
 function navigateFocus(direction) {
@@ -1849,6 +1881,65 @@ function navigateFocus(direction) {
     best.focus();
     best.scrollIntoView({ block: 'center', behavior: 'auto' });
   }
+}
+
+// ===== SOPORTE ADICIONAL: MANDOS EXPUESTOS COMO GAMEPAD =====
+// Algunos mandos de ciertos TV box / Smart TV no disparan eventos de teclado y en
+// cambio se registran como un gamepad HID estándar. Aquí los traducimos a las
+// mismas acciones de navegación, para que la app funcione igual sin importar cómo
+// el dispositivo reporte sus botones.
+let gamepadPollActive = false;
+let gamepadPrevPressed = {};
+function pollGamepads() {
+  if (!gamepadPollActive) return;
+  const pads = (navigator.getGamepads && navigator.getGamepads()) || [];
+  for (const pad of pads) {
+    if (!pad) continue;
+    const id = pad.index;
+    const prev = gamepadPrevPressed[id] || {};
+    const isPressed = (i) => !!(pad.buttons[i] && (pad.buttons[i].pressed || pad.buttons[i].value > 0.5));
+    const dpad = {
+      up: isPressed(12) || (pad.axes[1] !== undefined && pad.axes[1] < -0.5),
+      down: isPressed(13) || (pad.axes[1] !== undefined && pad.axes[1] > 0.5),
+      left: isPressed(14) || (pad.axes[0] !== undefined && pad.axes[0] < -0.5),
+      right: isPressed(15) || (pad.axes[0] !== undefined && pad.axes[0] > 0.5),
+      ok: isPressed(0),
+      back: isPressed(1)
+    };
+    const cur = {};
+    Object.keys(dpad).forEach(k => {
+      cur[k] = dpad[k];
+      if (dpad[k] && !prev[k]) {
+        const activeTag = document.activeElement ? document.activeElement.tagName : '';
+        const isEditable = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable);
+        if (isEditable && k !== 'back') { /* no interferir con la escritura */ }
+        else if (k === 'up') navigateFocus('up');
+        else if (k === 'down') navigateFocus('down');
+        else if (k === 'left') navigateFocus('left');
+        else if (k === 'right') navigateFocus('right');
+        else if (k === 'ok') {
+          const active = document.activeElement;
+          if (active && active !== document.body && typeof active.click === 'function') active.click();
+        } else if (k === 'back') {
+          const playerOverlay = document.getElementById('player-overlay');
+          if (playerOverlay && playerOverlay.classList.contains('show')) closePlayer();
+          else if ($('#my-lists-modal').classList.contains('show')) closeMyListsModal();
+          else if (document.activeElement && document.activeElement.isContentEditable) document.activeElement.blur();
+          else if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) document.activeElement.blur();
+          else window.history.back();
+        }
+      }
+    });
+    gamepadPrevPressed[id] = cur;
+  }
+  requestAnimationFrame(pollGamepads);
+}
+function startGamepadSupport() {
+  if (gamepadPollActive) return;
+  gamepadPollActive = true;
+  window.addEventListener('gamepadconnected', () => { gamepadPrevPressed = {}; });
+  window.addEventListener('gamepaddisconnected', () => { gamepadPrevPressed = {}; });
+  requestAnimationFrame(pollGamepads);
 }
 
 // ===== CONTROL DE CALIDAD Y FAVORITOS =====
@@ -2334,6 +2425,46 @@ async function renderSeriesDetail(main, series){
 const video = $('#video');
 const extBtn = $('#ext-player-btn');
 let continueUpdateInterval = null;
+let playbackWatchdog = null;
+let watchdogStallTicks = 0;
+let watchdogLastTime = -1;
+
+// Revisa cada 3s si el video avanza; si lleva ~6s congelado (y no está en pausa
+// ni buscando posición), fuerza una reconexión automática del stream.
+function stopPlaybackWatchdog(){
+  if (playbackWatchdog) { clearInterval(playbackWatchdog); playbackWatchdog = null; }
+  watchdogStallTicks = 0;
+  watchdogLastTime = -1;
+}
+function startPlaybackWatchdog(streamUrl){
+  stopPlaybackWatchdog();
+  playbackWatchdog = setInterval(() => {
+    const overlay = $('#player-overlay');
+    if (!overlay || !overlay.classList.contains('show')) { stopPlaybackWatchdog(); return; }
+    if (!video || video.paused || video.ended || video.seeking) { watchdogStallTicks = 0; watchdogLastTime = video ? video.currentTime : -1; return; }
+    const t = video.currentTime;
+    if (t === watchdogLastTime) {
+      watchdogStallTicks++;
+      if (watchdogStallTicks >= 2) {
+        watchdogStallTicks = 0;
+        const st = $('#player-status');
+        if (st) st.textContent = 'Reconectando…';
+        if (state.hls) {
+          state.hls.stopLoad();
+          state.hls.loadSource(streamUrl);
+          state.hls.attachMedia(video);
+        } else if (video) {
+          video.src = streamUrl;
+          video.load();
+          video.play().catch(()=>{});
+        }
+      }
+    } else {
+      watchdogStallTicks = 0;
+    }
+    watchdogLastTime = t;
+  }, 3000);
+}
 
 function saveExactProgress() {
   if (video.duration > 0 && video.currentTime > 0 && state.currentPlaybackItem) {
@@ -2388,6 +2519,7 @@ function playStream(url, title, resumeTime = 0, item = null){
     clearInterval(continueUpdateInterval);
     continueUpdateInterval = null;
   }
+  stopPlaybackWatchdog();
   
   const isM3U8 = /\.m3u8($|\?)/i.test(url);
   if(isM3U8 && window.Hls && Hls.isSupported()){
@@ -2397,12 +2529,13 @@ function playStream(url, title, resumeTime = 0, item = null){
     const MAX_RELOAD_ATTEMPTS = 5;
     
     const hls = new Hls({
-      maxBufferLength: 30,
-      maxBufferSize: 30 * 1024 * 1024,
+      maxBufferLength: 40,
+      maxMaxBufferLength: 60,
+      maxBufferSize: 60 * 1024 * 1024,
       liveDurationInfinity: true,
-      liveSyncDuration: 10,
-      liveMaxLatencyDuration: 20,
-      backbufferLength: 20,
+      liveSyncDuration: 25,
+      liveMaxLatencyDuration: 45,
+      backbufferLength: 30,
       recoverAttempts: 10,
       enableWorker: true,
       lowLatencyMode: false,
@@ -2433,6 +2566,8 @@ function playStream(url, title, resumeTime = 0, item = null){
       }
       // Iniciar guardado de progreso
       startContinueWatching();
+      // Vigilar cada 3s que el video siga avanzando; si se congela, reconectar
+      startPlaybackWatchdog(url);
     });
     
     hls.on(Hls.Events.ERROR, (evt, data) => {
@@ -2467,9 +2602,12 @@ function playStream(url, title, resumeTime = 0, item = null){
         extBtn.classList.add('show');
       } else {
         if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+          // Recuperación ligera: reanudar la carga sin reiniciar el manifiesto completo
+          // (recargar todo desde cero era lo que hacía que el stream "volviera al minuto 0"
+          // y se quedara pegado). El watchdog de 3s se encarga de forzar una reconexión
+          // completa solo si esto no resuelve el atasco.
           if (state.hls) {
-            state.hls.loadSource(url);
-            state.hls.attachMedia(video);
+            state.hls.startLoad();
           }
         }
       }
@@ -2503,6 +2641,8 @@ function playStream(url, title, resumeTime = 0, item = null){
         createPlayerControls(null, playerBox);
       }
       startContinueWatching();
+      // Vigilar cada 3s que el video siga avanzando; si se congela, reconectar
+      startPlaybackWatchdog(url);
     }, {once:true});
     video.play().catch(()=>{});
   } else {
@@ -2531,6 +2671,7 @@ function closePlayer(){
     clearInterval(continueUpdateInterval);
     continueUpdateInterval = null;
   }
+  stopPlaybackWatchdog();
   $('#player-overlay').classList.remove('show');
   extBtn.classList.remove('show');
   if(state.hls){ state.hls.destroy(); state.hls = null; }
@@ -2549,6 +2690,7 @@ function disconnectApp(){
     clearInterval(continueUpdateInterval);
     continueUpdateInterval = null;
   }
+  stopPlaybackWatchdog();
   video.pause(); video.removeAttribute('src'); video.load();
   $('#player-overlay').classList.remove('show');
   $('#app').classList.remove('show');
