@@ -2429,8 +2429,10 @@ let playbackWatchdog = null;
 let watchdogStallTicks = 0;
 let watchdogLastTime = -1;
 
-// Revisa cada 3s si el video avanza; si lleva ~6s congelado (y no está en pausa
-// ni buscando posición), fuerza una reconexión automática del stream.
+// Revisa la transmisión cada 3s. Si en ese lapso el video no avanzó (pantalla
+// congelada / "display"), primero intenta una recuperación suave (sin cortar la
+// imagen) y, si en el siguiente chequeo de 3s sigue trabado, fuerza una
+// reconexión completa del stream para que el canal no se quede pegado ni se corte.
 function stopPlaybackWatchdog(){
   if (playbackWatchdog) { clearInterval(playbackWatchdog); playbackWatchdog = null; }
   watchdogStallTicks = 0;
@@ -2445,9 +2447,19 @@ function startPlaybackWatchdog(streamUrl){
     const t = video.currentTime;
     if (t === watchdogLastTime) {
       watchdogStallTicks++;
-      if (watchdogStallTicks >= 2) {
+      const st = $('#player-status');
+      if (watchdogStallTicks === 1) {
+        // Primer chequeo trabado (~3s sin avanzar): recuperación suave, sin
+        // reiniciar el manifiesto, para evitar un corte visible innecesario.
+        if (st) st.textContent = 'Recuperando señal…';
+        if (state.hls) {
+          state.hls.startLoad();
+        } else if (video) {
+          video.play().catch(()=>{});
+        }
+      } else if (watchdogStallTicks >= 2) {
+        // Sigue trabado ~6s después: reconexión completa del stream.
         watchdogStallTicks = 0;
-        const st = $('#player-status');
         if (st) st.textContent = 'Reconectando…';
         if (state.hls) {
           state.hls.stopLoad();
